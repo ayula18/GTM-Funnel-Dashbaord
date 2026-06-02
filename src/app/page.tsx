@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatNumber } from '@/lib/utils';
 import Link from 'next/link';
 import { 
@@ -13,18 +14,30 @@ import {
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [funnels, setFunnels] = useState<any[]>([]);
+  const [selectedFunnelId, setSelectedFunnelId] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(false);
 
+  // Funnel list — for the scope selector + the "Active Funnels" section. Once.
   useEffect(() => {
-    Promise.all([
-      fetch('/api/stats').then(r => r.json()),
-      fetch('/api/funnels').then(r => r.json()),
-    ]).then(([s, f]) => {
-      setStats(s);
-      setFunnels(Array.isArray(f) ? f : []);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    fetch('/api/funnels')
+      .then(r => r.json())
+      .then(f => setFunnels(Array.isArray(f) ? f : []))
+      .catch(() => {});
   }, []);
+
+  // Stats — refetched whenever the selected scope (global vs a funnel) changes.
+  useEffect(() => {
+    setStatsLoading(true);
+    const url = selectedFunnelId === 'all' ? '/api/stats' : `/api/stats?funnel_id=${selectedFunnelId}`;
+    fetch(url)
+      .then(r => r.json())
+      .then(s => setStats(s))
+      .catch(() => {})
+      .finally(() => { setLoading(false); setStatsLoading(false); });
+  }, [selectedFunnelId]);
+
+  const selectedFunnel = funnels.find(f => String(f.id) === selectedFunnelId);
 
   if (loading) {
     return (
@@ -39,13 +52,32 @@ export default function DashboardPage() {
   return (
     <div className="p-8 space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">ICP Automation Funnel Overview</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
+            {selectedFunnelId === 'all'
+              ? 'Global overview across all funnels'
+              : `Scoped to: ${selectedFunnel?.name ?? 'funnel'}`}
+          </p>
+        </div>
+        <div className="w-full sm:w-72">
+          <Select value={selectedFunnelId} onValueChange={v => setSelectedFunnelId(v ?? 'all')}>
+            <SelectTrigger className="bg-card">
+              <SelectValue placeholder="Select scope" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Funnels (Global)</SelectItem>
+              {funnels.map(f => (
+                <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Stats Cards - Row 1 */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 transition-opacity ${statsLoading ? 'opacity-50' : ''}`}>
         <StatCard label="Total Companies" value={s.total} icon={<Users className="w-4 h-4" />} />
         <StatCard label="In Apollo" value={s.in_apollo} icon={<Globe className="w-4 h-4" />} color="blue" />
         <StatCard label="ICP Qualified" value={s.icp_yes} icon={<CheckCircle2 className="w-4 h-4" />} color="green" />
@@ -55,7 +87,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards - Row 2: Quality Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className={`grid grid-cols-2 md:grid-cols-5 gap-4 transition-opacity ${statsLoading ? 'opacity-50' : ''}`}>
         <StatCard label="NetNew" value={s.netnew} icon={<TrendingDown className="w-4 h-4" />} color="green" />
         <StatCard label="M&A / Subsidiary" value={s.acquired_count} icon={<GitMerge className="w-4 h-4" />} color="purple" subtitle="Acquired, kept separate" />
         <StatCard label="Dead Domains" value={s.dead_domains} icon={<WifiOff className="w-4 h-4" />} color="red" />
