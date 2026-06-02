@@ -69,44 +69,47 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
 
   const perPage = 50;
 
-  // Fetch filter options
+  // Shared scope params (funnel + step/tab + search + active filters) — used
+  // for BOTH the table rows AND the facet counts, so the dropdown numbers
+  // always match the current view. Excludes pagination/sort.
+  const scopeParams = useCallback(() => {
+    const p = new URLSearchParams();
+    if (funnelId) p.set('funnel_id', String(funnelId));
+    if (search) p.set('search', search);
+
+    // External filters (funnel step / tab)
+    if (externalFilters) {
+      for (const [k, v] of Object.entries(externalFilters)) {
+        if (v) p.set(k, v);
+      }
+    }
+    // Column checkbox filters
+    for (const [key, values] of Object.entries(columnFilters)) {
+      if (values.length > 0) p.set(key, values.join(','));
+    }
+    // Range filters
+    for (const [key, range] of Object.entries(rangeFilters)) {
+      if (range.min) p.set(`min_${key}`, range.min);
+      if (range.max) p.set(`max_${key}`, range.max);
+    }
+    if (maOnly) p.set('is_subsidiary', '1');
+    return p.toString();
+  }, [funnelId, search, externalFilters, columnFilters, rangeFilters, maOnly]);
+
+  // Fetch facet options + counts, scoped exactly like the table.
   useEffect(() => {
-    const url = funnelId ? `/api/filters?funnel_id=${funnelId}` : '/api/filters';
-    fetch(url)
+    fetch(`/api/filters?${scopeParams()}`)
       .then(res => res.json())
       .then(data => setFilterOptions(data))
       .catch(() => {});
-  }, [funnelId]);
+  }, [scopeParams]);
 
   const buildFilterUrl = useCallback(() => {
     let url = `/api/companies?page=${page}&per_page=${perPage}&sort_by=${sortBy}&sort_order=${sortOrder}`;
-    if (funnelId) url += `&funnel_id=${funnelId}`;
-    if (search) url += `&search=${encodeURIComponent(search)}`;
-    
-    // External filters (from funnel bar clicks)
-    if (externalFilters) {
-      for (const [k, v] of Object.entries(externalFilters)) {
-        if (v) url += `&${k}=${encodeURIComponent(v)}`;
-      }
-    }
-    
-    // Column checkbox filters
-    for (const [key, values] of Object.entries(columnFilters)) {
-      if (values.length > 0) {
-        url += `&${key}=${encodeURIComponent(values.join(','))}`;
-      }
-    }
-    
-    // Range filters
-    for (const [key, range] of Object.entries(rangeFilters)) {
-      if (range.min) url += `&min_${key}=${range.min}`;
-      if (range.max) url += `&max_${key}=${range.max}`;
-    }
-
-    if (maOnly) url += `&is_subsidiary=1`;
-
+    const scope = scopeParams();
+    if (scope) url += `&${scope}`;
     return url;
-  }, [funnelId, page, search, externalFilters, columnFilters, rangeFilters, sortBy, sortOrder, maOnly]);
+  }, [page, sortBy, sortOrder, scopeParams]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);

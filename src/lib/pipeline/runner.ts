@@ -1,4 +1,4 @@
-import { getUnclassifiedCompanies, updateCompany, getFunnelClassificationStatus, updateFunnelClassification, updateFunnelClassificationProgress } from '../db';
+import { getUnclassifiedCompanies, updateCompany, getFunnelClassificationStatus, updateFunnelClassification, updateFunnelClassificationProgress, computeDiscardReasons } from '../db';
 import { scrapeHomepage } from './scraper';
 import { extractSignals } from './signal-extractor';
 import { classifyCompany } from './classifier';
@@ -76,6 +76,14 @@ export async function* runPipeline(funnelId: number, apiKey: string, totalCount:
         errors:         [...errors],
       };
     }
+  }
+
+  // Classification changed icp_decision for many companies — recompute the
+  // funnel drop-off reasons so the Discarded view / discard_step stay accurate.
+  try {
+    await computeDiscardReasons(funnelId);
+  } catch (e) {
+    console.error('computeDiscardReasons after classification failed:', e);
   }
 
   await updateFunnelClassification(funnelId, 'idle', totalProcessed, totalCount, '');

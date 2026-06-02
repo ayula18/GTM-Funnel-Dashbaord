@@ -66,7 +66,59 @@ export async function linkCompanyToFunnel(companyId: number, funnelId: number) {
   );
 }
 
-export async function getCompanies(funnelId: number | null, filters: Record<string, unknown> = {}) {
+// Multi-select facet columns (filter key → SQL column). Shared so the table
+// query and the filter-dropdown counts apply IDENTICAL scoping.
+export const FACET_COLUMNS: Record<string, string> = {
+  icp_decision:           'c.icp_decision',
+  company_classification: 'c.company_classification',
+  category:               'c.category',
+  confidence:             'c.confidence',
+  icp_fit_level:          'c.icp_fit_level',
+  company_type:           'c.company_type',
+  company_country:        'c.company_country',
+  scrape_status:          'c.scrape_status',
+  discard_reason:         'c.discard_reason',
+  manual_icp:             'c.manual_icp',
+};
+
+/**
+ * Canonical funnel-step gates — the SINGLE source of truth for "what it takes
+ * to advance past step N". Used by BOTH the funnel-bar counts (getFunnelSteps)
+ * AND the per-step table filter (funnel_step), so a step's badge and the rows
+ * you see when you click it always agree. Thresholds mirror computeDiscardReasons.
+ *
+ *   step 2 = reached Apollo · step 3 = has employees · step 4 = ICP=Yes ·
+ *   step 5 = funded or has revenue (>$100k)
+ */
+export const FUNNEL_STEP_GATES: Record<number, string> = {
+  2: 'c.is_in_apollo = 1',
+  3: '(COALESCE(c.employee_reo, 0) > 0 OR COALESCE(c.apollo_employees, 0) > 1)',
+  4: "c.icp_decision = 'Yes'",
+  5: '(GREATEST(COALESCE(c.total_funding, 0), COALESCE(c.crunchbase_funding, 0)) > 100000 OR GREATEST(COALESCE(c.annual_revenue, 0), COALESCE(c.revenue_reo, 0)) > 100000)',
+};
+
+/** Cumulative WHERE fragment for "passed through step N" (gates 2..N AND-ed). */
+export function passedStepClause(step: number): string {
+  const gates: string[] = [];
+  for (let n = 2; n <= step; n++) if (FUNNEL_STEP_GATES[n]) gates.push(FUNNEL_STEP_GATES[n]);
+  return gates.join(' AND ');
+}
+
+/**
+ * Build the shared WHERE/JOIN for company queries. Used by BOTH `getCompanies`
+ * (the table) and `getFilterOptions` (the dropdown counts), so facet counts
+ * always match the rows you actually see — scoped by funnel, step, tab, search
+ * and every other active filter, excluding merged companies.
+ *
+ * `excludeKey` omits one facet's own selection (standard faceted-search
+ * behaviour: an ICP=No selection shouldn't zero out the Yes/Review counts in
+ * the ICP dropdown itself).
+ */
+export function buildCompanyFilter(
+  funnelId: number | null,
+  filters: Record<string, unknown>,
+  excludeKey?: string,
+): { joinClause: string; whereClause: string; values: unknown[] } {
   const conditions: string[] = [];
   const values: unknown[] = [];
   let joinClause = '';
@@ -85,20 +137,8 @@ export async function getCompanies(funnelId: number | null, filters: Record<stri
 
   conditions.push('c.merged_into_id IS NULL');
 
-  const multiFilters: Record<string, string> = {
-    icp_decision:           'c.icp_decision',
-    company_classification: 'c.company_classification',
-    category:               'c.category',
-    confidence:             'c.confidence',
-    icp_fit_level:          'c.icp_fit_level',
-    company_type:           'c.company_type',
-    company_country:        'c.company_country',
-    scrape_status:          'c.scrape_status',
-    discard_reason:         'c.discard_reason',
-    manual_icp:             'c.manual_icp',
-  };
-
-  for (const [key, col] of Object.entries(multiFilters)) {
+  for (const [key, col] of Object.entries(FACET_COLUMNS)) {
+    if (key === excludeKey) continue;
     if (filters[key]) {
       const vals = String(filters[key]).split(',').map(v => v.trim()).filter(Boolean);
       if (vals.length === 1) {
@@ -135,7 +175,20 @@ export async function getCompanies(funnelId: number | null, filters: Record<stri
 
   if (filters.discard_step !== undefined) { conditions.push('c.discard_step = ?'); values.push(filters.discard_step); }
 
-  const whereClause  = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  // Funnel step = "passed through step N" (cumulative canonical gates). No
+  // bound params — the gates are fixed SQL — so `values` is unaffected.
+  if (filters.funnel_step !== undefined && filters.funnel_step !== '') {
+    const step = Number(filters.funnel_step);
+    const clause = passedStepClause(step);
+    if (clause) conditions.push(`(${clause})`);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  return { joinClause, whereClause, values };
+}
+
+export async function getCompanies(funnelId: number | null, filters: Record<string, unknown> = {}) {
+  const { joinClause, whereClause, values } = buildCompanyFilter(funnelId, filters);
   const sortBy       = (filters.sort_by    as string) || 'c.company_name';
   const sortOrder    = (filters.sort_order as string) || 'asc';
   const validSortCols = [

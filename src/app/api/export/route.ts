@@ -11,19 +11,19 @@ export async function GET(request: Request) {
     const parsedFunnelId = funnelId ? parseInt(funnelId) : null;
 
     // String filters
-    ['search', 'icp_decision', 'company_classification', 'category', 'confidence', 'company_country', 'icp_fit_level', 'company_type', 'scrape_status'].forEach(key => {
+    ['search', 'icp_decision', 'company_classification', 'category', 'confidence', 'company_country', 'icp_fit_level', 'company_type', 'scrape_status', 'discard_reason', 'manual_icp', 'funnel_step'].forEach(key => {
       const val = url.searchParams.get(key);
       if (val !== null && val !== '') filters[key] = val;
     });
 
     // Boolean filters
-    ['is_netnew', 'needs_manual_review'].forEach(key => {
+    ['is_netnew', 'needs_manual_review', 'is_in_apollo', 'is_subsidiary'].forEach(key => {
       const val = url.searchParams.get(key);
       if (val !== null && val !== '') filters[key] = val === 'true' || val === '1';
     });
 
     // Number filters
-    ['min_employees', 'max_employees', 'min_funding', 'max_funding', 'min_revenue', 'max_revenue'].forEach(key => {
+    ['min_employees', 'max_employees', 'min_funding', 'max_funding', 'min_crunchbase_funding', 'max_crunchbase_funding', 'min_revenue', 'max_revenue', 'min_founded_year', 'max_founded_year', 'discard_step'].forEach(key => {
       const val = url.searchParams.get(key);
       if (val !== null && val !== '') {
         const num = parseFloat(val);

@@ -14,6 +14,7 @@ export async function GET(request: Request) {
       'search', 'icp_decision', 'company_classification', 'category',
       'confidence', 'company_country', 'icp_fit_level', 'company_type',
       'scrape_status', 'discard_reason', 'sort_by', 'sort_order', 'manual_icp',
+      'funnel_step',
     ].forEach(key => {
       const val = url.searchParams.get(key);
       if (val !== null && val !== '') filters[key] = val;

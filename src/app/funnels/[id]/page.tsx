@@ -91,17 +91,11 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
     return () => clearInterval(interval);
   }, [pipelineState.status, funnelId, fetchFunnel]);
 
-  // Build filter params based on active step
+  // Build filter params based on active step. Uses the canonical funnel_step
+  // gate (shared with the funnel-bar counts) so the rows match the step badge.
   const getStepFilters = (): Record<string, string> => {
-    if (!activeStep) return {};
-    switch (activeStep) {
-      case 1: return {};
-      case 2: return { is_in_apollo: 'true' };
-      case 3: return { is_in_apollo: 'true', min_employees: '1' };
-      case 4: return { icp_decision: 'Yes' };
-      case 5: return { icp_decision: 'Yes', min_funding: '100000' };
-      default: return {};
-    }
+    if (!activeStep || activeStep === 1) return {};
+    return { funnel_step: String(activeStep) };
   };
 
   // Build filters based on tab

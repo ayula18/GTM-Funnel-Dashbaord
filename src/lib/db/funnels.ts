@@ -1,5 +1,5 @@
 import { qp, qdb } from './core';
-import { computeDiscardReasons } from './companies';
+import { buildCompanyFilter, FACET_COLUMNS, FUNNEL_STEP_GATES } from './companies';
 
 // ── Funnel Queries ────────────────────────────────────────────────────────
 
@@ -98,95 +98,72 @@ export async function getFunnelClassificationStatus(id: number) {
 // ── Funnel Step Counts (with drop counts) ────────────────────────────────────────────────────────
 
 export async function getFunnelSteps(funnelId: number, _categoryFilter?: string) {
-  const rows = await qp(`
+  // Derived from the SAME canonical gates as the per-step table filter
+  // (FUNNEL_STEP_GATES), so each badge matches the rows you see on click.
+  const g2 = FUNNEL_STEP_GATES[2];
+  const g3 = FUNNEL_STEP_GATES[3];
+  const g4 = FUNNEL_STEP_GATES[4];
+  const g5 = FUNNEL_STEP_GATES[5];
+
+  const [row] = await qp(`
     SELECT
-      c.is_in_apollo, c.employee_reo, c.apollo_employees,
-      c.icp_decision, c.company_classification, c.category,
-      c.is_netnew, c.total_funding, c.annual_revenue,
-      c.crunchbase_funding, c.revenue_reo
+      COUNT(*)                                                                   AS step1_raw,
+      COUNT(*) FILTER (WHERE ${g2})                                              AS step2_apollo,
+      COUNT(*) FILTER (WHERE ${g2} AND ${g3})                                    AS step3_employees,
+      COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4})                          AS step4_icp_total,
+      COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4} AND c.is_netnew = 1)      AS step4_icp_netnew,
+      COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND c.company_classification = 'IT Services & Solutions') AS step4_services,
+      COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4} AND ${g5})               AS step5_funded_total,
+      COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4} AND ${g5} AND c.is_netnew = 1) AS step5_funded_netnew
     FROM funnel_companies fc
     JOIN companies c ON fc.company_id = c.id
-    WHERE fc.funnel_id = $1
+    WHERE fc.funnel_id = $1 AND c.merged_into_id IS NULL
   `, [funnelId]);
 
-  const steps = {
-    step1_raw: rows.length,
-    step2_apollo: 0,   step2_drop: 0,
-    step3_employees: 0, step3_drop: 0,
-    step4_icp_total: 0, step4_icp_netnew: 0, step4_services: 0, step4_drop: 0,
-    step5_funded_total: 0, step5_funded_netnew: 0, step5_drop: 0,
+  const n = (v: unknown) => Number(v) || 0;
+  const step1_raw          = n(row.step1_raw);
+  const step2_apollo       = n(row.step2_apollo);
+  const step3_employees    = n(row.step3_employees);
+  const step4_icp_total    = n(row.step4_icp_total);
+  const step5_funded_total = n(row.step5_funded_total);
+
+  return {
+    step1_raw,
+    step2_apollo,       step2_drop: step1_raw       - step2_apollo,
+    step3_employees,    step3_drop: step2_apollo    - step3_employees,
+    step4_icp_total,    step4_icp_netnew: n(row.step4_icp_netnew),
+    step4_services:     n(row.step4_services),
+    step4_drop:         step3_employees - step4_icp_total,
+    step5_funded_total, step5_funded_netnew: n(row.step5_funded_netnew),
+    step5_drop:         step4_icp_total - step5_funded_total,
   };
-
-  for (const r of rows) {
-    const inApollo = !!r.is_in_apollo;
-    if (!inApollo) continue;
-    steps.step2_apollo++;
-
-    const empReo    = (r.employee_reo    as number) || 0;
-    const empApollo = (r.apollo_employees as number) || 0;
-    if (empReo <= 0 && empApollo <= 1) continue;
-    steps.step3_employees++;
-
-    const icp            = r.icp_decision         as string;
-    const classification = r.company_classification as string;
-    if (classification === 'IT Services & Solutions') steps.step4_services++;
-
-    if (icp === 'Yes') {
-      steps.step4_icp_total++;
-      if (r.is_netnew) steps.step4_icp_netnew++;
-
-      const bestFunding = Math.max((r.total_funding as number) || 0, (r.crunchbase_funding as number) || 0);
-      const bestRevenue = Math.max((r.annual_revenue as number) || 0, (r.revenue_reo as number) || 0);
-      if (bestFunding > 100000 || bestRevenue > 100000) {
-        steps.step5_funded_total++;
-        if (r.is_netnew) steps.step5_funded_netnew++;
-      }
-    }
-  }
-
-  steps.step2_drop = steps.step1_raw       - steps.step2_apollo;
-  steps.step3_drop = steps.step2_apollo    - steps.step3_employees;
-  steps.step4_drop = steps.step3_employees - steps.step4_icp_total;
-  steps.step5_drop = steps.step4_icp_total - steps.step5_funded_total;
-  return steps;
 }
 
 // ── Filter Options (for Excel-like dropdowns) ────────────────────────────────────────────────────────
 
-export async function getFilterOptions(funnelId: number | null) {
-  let fromClause  = 'FROM companies c';
-  let whereClause = '';
-  const params: unknown[] = [];
-
-  if (funnelId) {
-    fromClause  += ' JOIN funnel_companies fc ON c.id = fc.company_id';
-    whereClause  = 'WHERE fc.funnel_id = ?';
-    params.push(funnelId);
-  }
-
-  const getDistinct = (col: string): Promise<Array<{ value: string; count: number }>> => {
-    const query = whereClause
-      ? `SELECT DISTINCT ${col} AS value, COUNT(*) AS count ${fromClause} ${whereClause} AND ${col} IS NOT NULL AND ${col} != '' GROUP BY ${col} ORDER BY count DESC`
-      : `SELECT DISTINCT ${col} AS value, COUNT(*) AS count ${fromClause} WHERE ${col} IS NOT NULL AND ${col} != '' GROUP BY ${col} ORDER BY count DESC`;
-    return qdb(query, params) as Promise<Array<{ value: string; count: number }>>;
+/**
+ * Faceted filter options + counts. Each facet's counts respect the SAME scope
+ * as the table (funnel + step + tab + search + every other active filter,
+ * merged companies excluded) but exclude that facet's own selection — so the
+ * numbers always line up with the rows the user is actually looking at.
+ */
+export async function getFilterOptions(
+  funnelId: number | null,
+  filters: Record<string, unknown> = {},
+) {
+  const getFacet = async (key: string, col: string): Promise<Array<{ value: string; count: number }>> => {
+    const { joinClause, whereClause, values } = buildCompanyFilter(funnelId, filters, key);
+    const guard = `${col} IS NOT NULL AND ${col} != ''`;
+    const sql = `
+      SELECT ${col} AS value, COUNT(DISTINCT c.id) AS count
+      FROM companies c ${joinClause}
+      ${whereClause ? `${whereClause} AND ${guard}` : `WHERE ${guard}`}
+      GROUP BY ${col} ORDER BY count DESC`;
+    const rows = await qdb(sql, values);
+    return rows.map((r: any) => ({ value: r.value as string, count: Number(r.count) }));
   };
 
-  const [
-    icp_decision, company_classification, category, confidence,
-    icp_fit_level, company_type, company_country, discard_reason,
-    scrape_status, manual_icp,
-  ] = await Promise.all([
-    getDistinct('c.icp_decision'),
-    getDistinct('c.company_classification'),
-    getDistinct('c.category'),
-    getDistinct('c.confidence'),
-    getDistinct('c.icp_fit_level'),
-    getDistinct('c.company_type'),
-    getDistinct('c.company_country'),
-    getDistinct('c.discard_reason'),
-    getDistinct('c.scrape_status'),
-    getDistinct('c.manual_icp'),
-  ]);
-
-  return { icp_decision, company_classification, category, confidence, icp_fit_level, company_type, company_country, discard_reason, scrape_status, manual_icp };
+  const keys = Object.keys(FACET_COLUMNS);
+  const results = await Promise.all(keys.map(k => getFacet(k, FACET_COLUMNS[k])));
+  return Object.fromEntries(keys.map((k, i) => [k, results[i]]));
 }
