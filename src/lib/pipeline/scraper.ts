@@ -34,7 +34,7 @@ export async function scrapeHomepage(domain: string): Promise<ScrapeResult> {
     const html = await res.text();
     await setCachedScrape(domain, html, null, 'success');
     return { domain, html, status: 'success' };
-  } catch (error: any) {
+  } catch (error) {
     // Try Jina fallback
     try {
       const jinaController = new AbortController();
@@ -52,15 +52,16 @@ export async function scrapeHomepage(domain: string): Promise<ScrapeResult> {
       const text = await res.text();
       await setCachedScrape(domain, text, text, 'success');
       return { domain, html: text, status: 'success' };
-    } catch (jinaError: any) {
+    } catch {
+      const msg = error instanceof Error ? error.message : String(error);
       const isDead =
-        error.message?.includes('ENOTFOUND')          ||
-        error.message?.includes('ECONNREFUSED')        ||
-        error.message?.includes('ERR_NAME_NOT_RESOLVED');
+        msg.includes('ENOTFOUND')        ||
+        msg.includes('ECONNREFUSED')     ||
+        msg.includes('ERR_NAME_NOT_RESOLVED');
 
       const status = isDead ? 'domain_dead' : 'failed';
       await setCachedScrape(domain, null, null, status);
-      return { domain, html: null, status, error: error.message };
+      return { domain, html: null, status, error: msg };
     }
   }
 }

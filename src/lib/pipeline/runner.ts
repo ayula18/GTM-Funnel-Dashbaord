@@ -52,8 +52,9 @@ export async function* runPipeline(funnelId: number, apiKey: string, totalCount:
         await updateCompany(id, updateData);
 
         return { domain, status: 'success' as const };
-      } catch (err: any) {
-        return { domain, status: 'error' as const, error: err.message };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { domain, status: 'error' as const, error: msg };
       }
     });
 
