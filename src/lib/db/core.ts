@@ -9,6 +9,11 @@ export function pool(): Pool {
   if (!connStr) throw new Error('DATABASE_URL environment variable is not set');
 
   const parsed = new URL(connStr);
+  // Pool size must stay UNDER the Supabase pooler's client limit (session mode
+  // caps at ~15). For Vercel/serverless use the TRANSACTION pooler (port 6543),
+  // which releases each connection right after the statement so a small pool
+  // scales across many function instances. Override per-env with PG_POOL_MAX.
+  const maxClients = parseInt(process.env.PG_POOL_MAX || '10', 10);
   _pool = new Pool({
     host:     parsed.hostname,
     port:     parseInt(parsed.port || '5432'),
@@ -16,9 +21,10 @@ export function pool(): Pool {
     user:     decodeURIComponent(parsed.username),
     password: decodeURIComponent(parsed.password),
     ssl:      { rejectUnauthorized: false },
-    max:      20, // INCREASED TO 20 FOR PARALLEL PROCESSING
-    idleTimeoutMillis:       20000,
+    max:      maxClients,
+    idleTimeoutMillis:       10000,
     connectionTimeoutMillis: 10000,
+    allowExitOnIdle:         true,
   });
   return _pool;
 }

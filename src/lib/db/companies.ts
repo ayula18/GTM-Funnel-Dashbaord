@@ -266,39 +266,55 @@ export async function getDashboardStats(funnelId?: number) {
     params.push(funnelId);
   }
 
-  const cnt = (extra: string) =>
-    qdb(`SELECT COUNT(*) AS c ${fromClause} ${whereClause ? whereClause + ' AND' : 'WHERE'} ${extra}`, params)
-      .then((rows: any[]) => Number(rows[0].c));
-
   const grp = (col: string) =>
     qdb(`SELECT ${col}, COUNT(*) AS count ${fromClause} ${whereClause ? whereClause + ' AND' : 'WHERE'} ${col} IS NOT NULL AND ${col} != '' GROUP BY ${col} ORDER BY count DESC`, params);
 
+  // All scalar counts in ONE pass via conditional aggregation — instead of a
+  // dozen separate COUNT queries that previously exhausted the connection pool.
+  const countsQuery = `
+    SELECT
+      COUNT(*)                                                                      AS total,
+      COUNT(*) FILTER (WHERE c.is_in_apollo = 1)                                    AS in_apollo,
+      COUNT(*) FILTER (WHERE c.icp_decision = 'Yes')                                AS icp_yes,
+      COUNT(*) FILTER (WHERE c.icp_decision = 'No')                                 AS icp_no,
+      COUNT(*) FILTER (WHERE c.icp_decision = 'Review' OR c.icp_decision IS NULL)   AS icp_review,
+      COUNT(*) FILTER (WHERE c.is_netnew = 1)                                       AS netnew,
+      COUNT(*) FILTER (WHERE c.scrape_status = 'domain_dead')                       AS dead_domains,
+      COUNT(*) FILTER (WHERE c.icp_decision = 'No' AND c.manual_icp = 'Yes')        AS false_negatives,
+      COUNT(*) FILTER (WHERE c.classified_at IS NOT NULL)                           AS total_classified,
+      COUNT(*) FILTER (WHERE c.scrape_status = 'success')                           AS scrape_success,
+      COUNT(*) FILTER (WHERE c.subsidiary_of IS NOT NULL AND c.subsidiary_of != '') AS acquired_count
+    ${fromClause} ${whereClause}
+  `;
+
   const [
-    total, inApollo, icpYes, icpNo, icpReview, netnew,
-    deadDomains, falseNegatives, totalClassified, scrapeSuccess,
-    funnelCount, masterIcpCount, acquiredCount,
+    countsRows,
     classBreakdown, catBreakdown, confBreakdown, typeBreakdown, fitBreakdown, discardBreakdown,
+    funnelCount, masterIcpCount,
   ] = await Promise.all([
-    qdb(`SELECT COUNT(*) AS c ${fromClause} ${whereClause || ''}`, params).then((rows: any[]) => Number(rows[0].c)),
-    cnt('c.is_in_apollo = 1'),
-    cnt("c.icp_decision = 'Yes'"),
-    cnt("c.icp_decision = 'No'"),
-    cnt("c.icp_decision = 'Review' OR c.icp_decision IS NULL"),
-    cnt('c.is_netnew = 1'),
-    cnt("c.scrape_status = 'domain_dead'"),
-    cnt("c.icp_decision = 'No' AND c.manual_icp = 'Yes'"),
-    cnt('c.classified_at IS NOT NULL'),
-    cnt("c.scrape_status = 'success'"),
-    qp("SELECT COUNT(*) AS c FROM funnels WHERE status = 'active'").then(rows => Number(rows[0].c)),
-    getMasterIcpCount(),
-    cnt("c.subsidiary_of IS NOT NULL AND c.subsidiary_of != ''"),
+    qdb(countsQuery, params),
     grp('c.company_classification'),
     grp('c.category'),
     grp('c.confidence'),
     grp('c.company_type'),
     grp('c.icp_fit_level'),
     grp('c.discard_reason'),
+    qp("SELECT COUNT(*) AS c FROM funnels WHERE status = 'active'").then(rows => Number(rows[0].c)),
+    getMasterIcpCount(),
   ]);
+
+  const r = countsRows[0] as Record<string, string>;
+  const total          = Number(r.total);
+  const inApollo       = Number(r.in_apollo);
+  const icpYes         = Number(r.icp_yes);
+  const icpNo          = Number(r.icp_no);
+  const icpReview      = Number(r.icp_review);
+  const netnew         = Number(r.netnew);
+  const deadDomains    = Number(r.dead_domains);
+  const falseNegatives = Number(r.false_negatives);
+  const totalClassified= Number(r.total_classified);
+  const scrapeSuccess  = Number(r.scrape_success);
+  const acquiredCount  = Number(r.acquired_count);
 
   const scrapeSuccessRate = totalClassified > 0 ? Math.round((scrapeSuccess / totalClassified) * 100) : 0;
 

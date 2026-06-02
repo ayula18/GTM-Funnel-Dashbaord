@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { runPipeline } from '@/lib/pipeline/runner';
-import { getFunnel, qp } from '@/lib/db';
+import { getFunnel } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -14,17 +14,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Funnel not found' }, { status: 404 });
     }
 
-    // Read API key from DB (set via Settings UI), fall back to env var
-    let apiKey = process.env.OPENAI_API_KEY || '';
-    try {
-      const rows = await qp("SELECT value FROM app_settings WHERE key = 'openai_api_key'");
-      if (rows[0]?.value) apiKey = rows[0].value as string;
-    } catch {
-      // DB read failed — use env var if set
-    }
-
+    // API key comes from the environment (set OPENAI_API_KEY locally in
+    // .env.local and in the Vercel project's environment variables).
+    const apiKey = process.env.OPENAI_API_KEY || '';
     if (!apiKey) {
-      return NextResponse.json({ error: 'OpenAI API key not configured. Add it in Settings.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'OpenAI API key not configured. Set the OPENAI_API_KEY environment variable.' },
+        { status: 400 },
+      );
     }
 
     const unclassifiedCount = funnel.unclassified as number;

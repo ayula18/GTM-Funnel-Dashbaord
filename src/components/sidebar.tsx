@@ -2,12 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Filter, 
-  Upload, 
-  Database, 
-  Settings,
+import {
+  LayoutDashboard,
+  Filter,
+  Upload,
+  Database,
   Target
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,7 +16,6 @@ const navItems = [
   { name: 'Funnels', href: '/funnels', icon: Filter },
   { name: 'Upload', href: '/upload', icon: Upload },
   { name: 'Master List', href: '/master-list', icon: Database },
-  { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
 export function Sidebar() {
