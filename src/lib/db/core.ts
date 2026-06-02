@@ -1,0 +1,51 @@
+import { Pool, PoolClient } from 'pg';
+
+let _pool: Pool | null = null;
+
+export function pool(): Pool {
+  if (_pool) return _pool;
+
+  const connStr = process.env.DATABASE_URL;
+  if (!connStr) throw new Error('DATABASE_URL environment variable is not set');
+
+  const parsed = new URL(connStr);
+  _pool = new Pool({
+    host:     parsed.hostname,
+    port:     parseInt(parsed.port || '5432'),
+    database: parsed.pathname.replace(/^\/+/, ''),
+    user:     decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+    ssl:      { rejectUnauthorized: false },
+    max:      20, // INCREASED TO 20 FOR PARALLEL PROCESSING
+    idleTimeoutMillis:       20000,
+    connectionTimeoutMillis: 10000,
+  });
+  return _pool;
+}
+
+export async function qp(query: string, values: unknown[] = []): Promise<any[]> {
+  const result = await pool().query(query, values as any[]);
+  return result.rows;
+}
+
+export async function qdb(query: string, values: unknown[] = []): Promise<any[]> {
+  let n = 0;
+  const numbered = query.replace(/\?/g, () => `$${++n}`);
+  const result = await pool().query(numbered, values as any[]);
+  return result.rows;
+}
+
+export async function withTx<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool().connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
