@@ -9,9 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload as UploadIcon, CheckCircle, AlertCircle, FileSpreadsheet, Globe, Layers, Beaker, Database } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, errorMessage } from '@/lib/utils';
 import { detectSourceFromFile } from '@/lib/csv-detect';
-import type { CsvSourceType } from '@/lib/types';
+import type { CsvSourceType, UploadResult } from '@/lib/types';
 
 const SOURCE_INFO: Record<string, { label: string; icon: React.ReactNode; color: string; desc: string }> = {
   apollo: { label: 'Apollo Export', icon: <Globe className="w-4 h-4" />, color: 'text-blue-600 bg-blue-50', desc: 'Employee, funding, LinkedIn, country data' },
@@ -34,7 +34,7 @@ export function UploadToFunnelDialog({ funnelId, open, onOpenChange, onSuccess }
   const [detected, setDetected] = useState<CsvSourceType | null>(null);
   const [sourceOverride, setSourceOverride] = useState<CsvSourceType | 'auto'>('auto');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<UploadResult | null>(null);
 
   const handleFileSelect = async (f: File | null) => {
     setFile(f);
@@ -72,8 +72,8 @@ export function UploadToFunnelDialog({ funnelId, open, onOpenChange, onSuccess }
       setResult(data);
       toast.success('Data appended successfully!');
       onSuccess();
-    } catch (error: any) {
-      toast.error('Upload failed', { description: error.message });
+    } catch (error) {
+      toast.error('Upload failed', { description: errorMessage(error) });
     } finally {
       setLoading(false);
     }

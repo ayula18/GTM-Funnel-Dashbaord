@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { errorMessage } from '@/lib/utils';
 import { getCompanyById, updateCompany, computeDiscardReasons, qp } from '@/lib/db';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -17,8 +18,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     );
 
     return NextResponse.json({ ...company, merged_companies: mergedCompanies });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
 
@@ -50,7 +51,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

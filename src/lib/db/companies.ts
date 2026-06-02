@@ -54,7 +54,7 @@ export async function upsertCompany(data: Record<string, unknown>): Promise<numb
   const placeholders = vals.map((_, i) => `$${i + 1}`).join(', ');
   const result = await pool().query(
     `INSERT INTO companies (${cols.join(', ')}) VALUES (${placeholders}) RETURNING id`,
-    vals as any[],
+    vals,
   );
   return result.rows[0].id as number;
 }

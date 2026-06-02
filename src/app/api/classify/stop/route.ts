@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { updateFunnelClassification } from '@/lib/db';
+import { errorMessage } from '@/lib/utils';
 
 export async function POST(request: Request) {
   try {
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     try { await computeDiscardReasons(Number(funnel_id)); } catch {}
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

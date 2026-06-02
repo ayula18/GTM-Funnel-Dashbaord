@@ -15,7 +15,8 @@ import {
   ChevronLeft, ChevronRight, Search, ExternalLink, Edit2,
   ArrowUpDown, ArrowUp, ArrowDown, GitMerge
 } from "lucide-react";
-import { formatCurrency, formatNumber, cn } from '@/lib/utils';
+import { formatCurrency, formatNumber, cn, errorMessage } from '@/lib/utils';
+import type { CompanyRow } from '@/lib/types';
 import { EditCompanyDialog } from './edit-company-dialog';
 import { CheckboxFilter, RangeFilter, ActiveFilterPills } from './column-filters';
 import { AcquiredBadge } from './acquired-badge';
@@ -43,13 +44,13 @@ interface DataTableProps {
 }
 
 export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main', showDiscardColumn, showSelection, onSelectionChange }: DataTableProps) {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<CompanyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState('');
-  const [editingCompany, setEditingCompany] = useState<any | null>(null);
+  const [editingCompany, setEditingCompany] = useState<CompanyRow | null>(null);
   const [expandedText, setExpandedText] = useState<{title: string, content: string} | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [sortBy, setSortBy] = useState('c.id');
@@ -157,8 +158,8 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
       // but patching manual_icp already clears the discard flags.
       // Refreshing the table will remove it from the discarded view.
       fetchData();
-    } catch (err: any) {
-      toast.error('Failed to force pass', { description: err.message });
+    } catch (err) {
+      toast.error('Failed to force pass', { description: errorMessage(err) });
     }
   };
 
@@ -200,12 +201,11 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
   );
 
   const IcpBadge = ({ decision, manual }: { decision: string | null, manual?: string | null }) => {
-    let colorClass = "text-muted-foreground";
     let bgClass = "";
-    if (decision === 'Yes') { bgClass = "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"; colorClass = "text-emerald-600"; }
-    else if (decision === 'No') { bgClass = "bg-red-500/10 text-red-600 border-red-500/20"; colorClass = "text-red-600"; }
-    else if (decision === 'Review') { bgClass = "bg-amber-500/10 text-amber-600 border-amber-500/20"; colorClass = "text-amber-600"; }
-    
+    if (decision === 'Yes') { bgClass = "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"; }
+    else if (decision === 'No') { bgClass = "bg-red-500/10 text-red-600 border-red-500/20"; }
+    else if (decision === 'Review') { bgClass = "bg-amber-500/10 text-amber-600 border-amber-500/20"; }
+
     return (
       <div className="flex items-center gap-1">
         {decision ? <Badge className={bgClass}>{decision}</Badge> : <span className="text-muted-foreground">—</span>}
@@ -391,7 +391,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                         />
                       </TableCell>
                     )}
-                    <TableCell className="font-medium max-w-[180px]" title={row.company_name}>
+                    <TableCell className="font-medium max-w-[180px]" title={row.company_name ?? undefined}>
                       <div className="flex items-center gap-1.5">
                         <span className="truncate">
                           {row.company_name || <span className="text-muted-foreground italic">Unknown</span>}
@@ -435,7 +435,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                       </TableCell>
                     )}
                     {['main', 'icp'].includes(viewMode) && (
-                      <TableCell className="text-xs truncate max-w-[130px]" title={row.category}>
+                      <TableCell className="text-xs truncate max-w-[130px]" title={row.category ?? undefined}>
                         {row.category || '—'}
                       </TableCell>
                     )}
@@ -494,7 +494,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                         {row.classification_reason ? (
                           <div 
                             className="text-xs truncate text-muted-foreground cursor-pointer hover:text-foreground hover:underline transition-colors"
-                            onClick={() => setExpandedText({ title: `Reason: ${row.company_name || row.domain}`, content: row.classification_reason })}
+                            onClick={() => setExpandedText({ title: `Reason: ${row.company_name || row.domain}`, content: row.classification_reason ?? '' })}
                           >
                             {row.classification_reason}
                           </div>
@@ -515,7 +515,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                         {row.observations ? (
                           <div 
                             className="text-xs truncate text-muted-foreground cursor-pointer hover:text-foreground hover:underline transition-colors"
-                            onClick={() => setExpandedText({ title: `Notes: ${row.company_name || row.domain}`, content: row.observations })}
+                            onClick={() => setExpandedText({ title: `Notes: ${row.company_name || row.domain}`, content: row.observations ?? '' })}
                           >
                             {row.observations}
                           </div>

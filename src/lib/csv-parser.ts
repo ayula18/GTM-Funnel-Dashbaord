@@ -223,7 +223,7 @@ export async function parseAndImportCsv(
   const chunks = chunkArray(dataRows, 20);
 
   for (const chunk of chunks) {
-    await Promise.all(chunk.map(async (row, idx) => {
+    await Promise.all(chunk.map(async (row) => {
       if (!row || row.length < 1) return;
 
       result.total_rows++;

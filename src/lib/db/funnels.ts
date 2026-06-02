@@ -97,7 +97,7 @@ export async function getFunnelClassificationStatus(id: number) {
 
 // ── Funnel Step Counts (with drop counts) ────────────────────────────────────────────────────────
 
-export async function getFunnelSteps(funnelId: number, _categoryFilter?: string) {
+export async function getFunnelSteps(funnelId: number) {
   // Derived from the SAME canonical gates as the per-step table filter
   // (FUNNEL_STEP_GATES), so each badge matches the rows you see on click.
   const g2 = FUNNEL_STEP_GATES[2];
@@ -160,7 +160,7 @@ export async function getFilterOptions(
       ${whereClause ? `${whereClause} AND ${guard}` : `WHERE ${guard}`}
       GROUP BY ${col} ORDER BY count DESC`;
     const rows = await qdb(sql, values);
-    return rows.map((r: any) => ({ value: r.value as string, count: Number(r.count) }));
+    return rows.map(r => ({ value: r.value as string, count: Number(r.count) }));
   };
 
   const keys = Object.keys(FACET_COLUMNS);

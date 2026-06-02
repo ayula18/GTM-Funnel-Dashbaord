@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { errorMessage } from '@/lib/utils';
 import { getDashboardStats } from '@/lib/db';
 
 export async function GET(request: Request) {
@@ -9,7 +10,7 @@ export async function GET(request: Request) {
 
     const stats = await getDashboardStats(parsedFunnelId);
     return NextResponse.json(stats);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

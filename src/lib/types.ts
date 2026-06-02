@@ -71,6 +71,22 @@ export interface Company {
   classified_at: string | null;
 }
 
+/**
+ * A company row as returned by /api/companies for the data table. Mirrors
+ * Company but DB integer-booleans arrive as 0/1 and an aggregated
+ * `merged_domains` string is attached. Kept loose on the boolean-ish fields
+ * so the table can read raw DB values without per-cell casts.
+ */
+export interface CompanyRow extends Omit<Company,
+  'is_in_apollo' | 'is_netnew' | 'needs_manual_review' | 'is_sub_product' | 'is_nonprofit'> {
+  is_in_apollo: number | boolean | null;
+  is_netnew: number | boolean | null;
+  needs_manual_review: number | boolean | null;
+  is_sub_product: number | boolean | null;
+  is_nonprofit: number | boolean | null;
+  merged_domains?: string | null;
+}
+
 // ── Funnel ───────────────────────────────────────────────────────────────
 
 export interface Funnel {
@@ -237,6 +253,7 @@ export interface DashboardStats {
   netnew: number;
   funnel_count: number;
   master_icp_count: number;
+  acquired_count: number;
   dead_domains: number;
   false_negatives: number;
   scrape_success_rate: number;

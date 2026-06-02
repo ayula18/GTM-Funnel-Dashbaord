@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { errorMessage } from '@/lib/utils';
 import { getFilterOptions } from '@/lib/db';
 
 export async function GET(request: Request) {
@@ -8,7 +9,7 @@ export async function GET(request: Request) {
     const parsedFunnelId = funnelId ? parseInt(funnelId) : null;
 
     // Mirror /api/companies scope params so facet counts match the table.
-    const filters: Record<string, any> = {};
+    const filters: Record<string, unknown> = {};
 
     [
       'search', 'icp_decision', 'company_classification', 'category',
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
 
     const options = await getFilterOptions(parsedFunnelId, filters);
     return NextResponse.json(options);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

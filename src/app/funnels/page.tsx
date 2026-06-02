@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatNumber } from '@/lib/utils';
+import type { FunnelWithStats } from '@/lib/types';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 
 export default function FunnelsPage() {
-  const [funnels, setFunnels] = useState<any[]>([]);
+  const [funnels, setFunnels] = useState<FunnelWithStats[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

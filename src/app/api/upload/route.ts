@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { errorMessage } from '@/lib/utils';
 import { parseAndImportCsv, parseMasterIcpCsv } from '@/lib/csv-parser';
 import { createFunnel, computeDiscardReasons } from '@/lib/db';
 import { CsvSourceType } from '@/lib/types';
@@ -43,8 +44,8 @@ export async function POST(request: Request) {
     await computeDiscardReasons(fId);
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

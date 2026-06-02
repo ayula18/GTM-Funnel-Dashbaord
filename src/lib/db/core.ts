@@ -29,16 +29,19 @@ export function pool(): Pool {
   return _pool;
 }
 
-export async function qp(query: string, values: unknown[] = []): Promise<any[]> {
-  const result = await pool().query(query, values as any[]);
-  return result.rows;
+/** A database row. Callers may pass a concrete shape: `qp<{ id: number }>(...)`. */
+export type DbRow = Record<string, unknown>;
+
+export async function qp<T = DbRow>(query: string, values: unknown[] = []): Promise<T[]> {
+  const result = await pool().query(query, values);
+  return result.rows as T[];
 }
 
-export async function qdb(query: string, values: unknown[] = []): Promise<any[]> {
+export async function qdb<T = DbRow>(query: string, values: unknown[] = []): Promise<T[]> {
   let n = 0;
   const numbered = query.replace(/\?/g, () => `$${++n}`);
-  const result = await pool().query(numbered, values as any[]);
-  return result.rows;
+  const result = await pool().query(numbered, values);
+  return result.rows as T[];
 }
 
 export async function withTx<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {

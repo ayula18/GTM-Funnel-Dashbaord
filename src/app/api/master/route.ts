@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { errorMessage } from '@/lib/utils';
 import { pushToMaster, getMasterIcpCount } from '@/lib/db';
 
 export async function POST(request: Request) {
@@ -10,8 +11,8 @@ export async function POST(request: Request) {
     await pushToMaster(company_ids);
     const count = await getMasterIcpCount();
     return NextResponse.json({ pushed: company_ids.length, total_master: count });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
 
@@ -19,7 +20,7 @@ export async function GET() {
   try {
     const count = await getMasterIcpCount();
     return NextResponse.json({ total: count });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

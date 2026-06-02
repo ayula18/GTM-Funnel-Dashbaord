@@ -313,21 +313,22 @@ export async function scanForDuplicates(funnelId: number): Promise<number> {
 // ── Merging Companies ────────────────────────────────────────────────────────
 
 export async function mergeCompanies(primaryId: number, secondaryId: number) {
-  const primary   = await getCompanyById(primaryId)   as Record<string, any> | null;
-  const secondary = await getCompanyById(secondaryId) as Record<string, any> | null;
+  const primary   = await getCompanyById(primaryId);
+  const secondary = await getCompanyById(secondaryId);
 
   if (!primary || !secondary) throw new Error('Company not found');
+  const secondaryDomain = secondary.domain as string;
 
   await withTx(async (client) => {
     // 1. Move domain aliases
     await client.query('UPDATE domain_aliases SET company_id = $1 WHERE company_id = $2', [primaryId, secondaryId]);
 
     // 2. Add secondary domain as alias for primary
-    const coreRoot = extractCoreRoot(secondary.domain);
-    const rootName = extractRootName(secondary.domain);
+    const coreRoot = extractCoreRoot(secondaryDomain);
+    const rootName = extractRootName(secondaryDomain);
     await client.query(
       'INSERT INTO domain_aliases (company_id, domain, root_name, core_root, source, is_canonical) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (domain) DO NOTHING',
-      [primaryId, secondary.domain, rootName, coreRoot, 'manual_merge', 0],
+      [primaryId, secondaryDomain, rootName, coreRoot, 'manual_merge', 0],
     );
 
     // 3. Move data sources
@@ -341,7 +342,7 @@ export async function mergeCompanies(primaryId: number, secondaryId: number) {
     await client.query('DELETE FROM funnel_companies WHERE company_id = $1', [secondaryId]);
 
     // 5. Merge data: prefer primary, fallback to secondary for nulls
-    const updates: Record<string, any> = {};
+    const updates: Record<string, unknown> = {};
     for (const key of Object.keys(secondary)) {
       if (['id', 'domain', 'created_at', 'updated_at', 'merged_into_id'].includes(key)) continue;
       if ((primary[key] === null || primary[key] === '' || primary[key] === undefined) &&
@@ -369,29 +370,30 @@ export async function mergeCompanies(primaryId: number, secondaryId: number) {
 }
 
 export async function unmergeCompany(secondaryId: number) {
-  const secondary = await getCompanyById(secondaryId) as Record<string, any> | null;
+  const secondary = await getCompanyById(secondaryId);
   if (!secondary)                throw new Error('Secondary company not found');
   if (!secondary.merged_into_id) throw new Error('Company is not merged');
 
   const primaryId = secondary.merged_into_id as number;
+  const secondaryDomain = secondary.domain as string;
 
   await withTx(async (client) => {
     await client.query('UPDATE companies SET merged_into_id = NULL WHERE id = $1', [secondaryId]);
     await client.query(
       "DELETE FROM domain_aliases WHERE company_id = $1 AND domain = $2 AND source = 'manual_merge'",
-      [primaryId, secondary.domain],
+      [primaryId, secondaryDomain],
     );
 
-    const rootName = extractRootName(secondary.domain);
+    const rootName = extractRootName(secondaryDomain);
     await client.query(
       'UPDATE domain_aliases SET company_id = $1 WHERE company_id = $2 AND root_name = $3',
       [secondaryId, primaryId, rootName],
     );
 
-    const coreRoot = extractCoreRoot(secondary.domain);
+    const coreRoot = extractCoreRoot(secondaryDomain);
     await client.query(
       'INSERT INTO domain_aliases (company_id, domain, root_name, core_root, source, is_canonical) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (domain) DO NOTHING',
-      [secondaryId, secondary.domain, rootName, coreRoot, 'unmerge', 1],
+      [secondaryId, secondaryDomain, rootName, coreRoot, 'unmerge', 1],
     );
 
     await client.query(

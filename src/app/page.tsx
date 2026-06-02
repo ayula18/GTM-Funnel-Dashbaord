@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatNumber } from '@/lib/utils';
+import type { DashboardStats, FunnelWithStats } from '@/lib/types';
 import Link from 'next/link';
 import { 
   LayoutDashboard, Users, CheckCircle2, XCircle, AlertTriangle,
@@ -12,8 +13,8 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<any>(null);
-  const [funnels, setFunnels] = useState<any[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [funnels, setFunnels] = useState<FunnelWithStats[]>([]);
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -47,7 +48,7 @@ export default function DashboardPage() {
     );
   }
 
-  const s = stats || {};
+  const s = (stats ?? {}) as DashboardStats;
 
   return (
     <div className="p-8 space-y-8">
@@ -105,7 +106,7 @@ export default function DashboardPage() {
           <CardContent>
             {s.classification_breakdown?.length > 0 ? (
               <div className="space-y-3">
-                {s.classification_breakdown.map((item: any) => {
+                {s.classification_breakdown.map((item) => {
                   const pct = s.total > 0 ? Math.round((item.count / s.total) * 100) : 0;
                   const color = item.company_classification === 'DevTool' ? 'bg-emerald-500' 
                     : item.company_classification === 'IT Services & Solutions' ? 'bg-amber-500'
@@ -137,7 +138,7 @@ export default function DashboardPage() {
           <CardContent>
             {s.confidence_breakdown?.length > 0 ? (
               <div className="space-y-3">
-                {s.confidence_breakdown.map((item: any) => {
+                {s.confidence_breakdown.map((item) => {
                   const pct = s.icp_yes > 0 ? Math.round((item.count / s.icp_yes) * 100) : 0;
                   const color = item.confidence === 'High' ? 'bg-emerald-500'
                     : item.confidence === 'Medium' ? 'bg-amber-500' : 'bg-red-500';
@@ -169,7 +170,7 @@ export default function DashboardPage() {
         <CardContent>
           {s.category_breakdown?.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-              {s.category_breakdown.slice(0, 18).map((item: any, idx: number) => {
+              {s.category_breakdown.slice(0, 18).map((item, idx: number) => {
                 const maxCount = s.category_breakdown[0]?.count || 1;
                 const pct = Math.round((item.count / maxCount) * 100);
                 return (
@@ -202,7 +203,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="flex gap-4 flex-wrap">
-              {s.discard_breakdown.map((item: any) => {
+              {s.discard_breakdown.map((item) => {
                 const labels: Record<string, string> = {
                   not_in_apollo: 'Not in Apollo',
                   low_employees: 'Low Employees',
@@ -234,7 +235,7 @@ export default function DashboardPage() {
         <CardContent>
           {funnels.length > 0 ? (
             <div className="space-y-3">
-              {funnels.slice(0, 5).map((f: any) => (
+              {funnels.slice(0, 5).map((f) => (
                 <Link key={f.id} href={`/funnels/${f.id}`}>
                   <div className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
                     <div>

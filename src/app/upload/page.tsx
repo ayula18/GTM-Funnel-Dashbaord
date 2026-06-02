@@ -13,9 +13,9 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, errorMessage } from '@/lib/utils';
 import { detectSourceFromFile } from '@/lib/csv-detect';
-import type { CsvSourceType } from '@/lib/types';
+import type { CsvSourceType, UploadResult } from '@/lib/types';
 
 const SOURCE_INFO: Record<string, { label: string; icon: React.ReactNode; color: string; desc: string }> = {
   apollo: { label: 'Apollo Export', icon: <Globe className="w-4 h-4" />, color: 'text-blue-600 bg-blue-50', desc: 'Employee, funding, LinkedIn, country data' },
@@ -35,7 +35,7 @@ export default function UploadPage() {
   const [masterFile, setMasterFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [masterLoading, setMasterLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<UploadResult | null>(null);
 
   // Detect the source type in the browser the moment a file is chosen, so the
   // user can confirm or override BEFORE anything is committed.
@@ -76,8 +76,8 @@ export default function UploadPage() {
       
       setResult(data);
       toast.success('Funnel created successfully!');
-    } catch (error: any) {
-      toast.error('Upload failed', { description: error.message });
+    } catch (error) {
+      toast.error('Upload failed', { description: errorMessage(error) });
     } finally {
       setLoading(false);
     }
@@ -101,8 +101,8 @@ export default function UploadPage() {
       
       toast.success(`Imported ${data.imported} domains to Master ICP list`);
       setMasterFile(null);
-    } catch (error: any) {
-      toast.error('Upload failed', { description: error.message });
+    } catch (error) {
+      toast.error('Upload failed', { description: errorMessage(error) });
     } finally {
       setMasterLoading(false);
     }

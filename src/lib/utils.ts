@@ -22,3 +22,8 @@ export function truncate(str: string | null | undefined, maxLen: number = 60): s
   if (!str) return '—';
   return str.length > maxLen ? str.slice(0, maxLen) + '…' : str;
 }
+
+/** Safely extract a message from an unknown caught error. */
+export function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}

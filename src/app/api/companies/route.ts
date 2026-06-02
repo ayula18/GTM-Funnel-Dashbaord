@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
+import { errorMessage } from '@/lib/utils';
 import { getCompanies } from '@/lib/db';
 
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const filters: Record<string, any> = {};
+    const filters: Record<string, unknown> = {};
 
     const funnelId       = url.searchParams.get('funnel_id');
     const parsedFunnelId = funnelId ? parseInt(funnelId) : null;
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
 
     const result = await getCompanies(parsedFunnelId, filters);
     return NextResponse.json(result);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

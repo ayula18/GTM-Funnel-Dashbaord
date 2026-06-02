@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
+import { errorMessage } from '@/lib/utils';
 import { getCompanies } from '@/lib/db';
 import Papa from 'papaparse';
 
 export async function GET(request: Request) {
   try {
     const url            = new URL(request.url);
-    const filters: Record<string, any> = {};
+    const filters: Record<string, unknown> = {};
 
     const funnelId       = url.searchParams.get('funnel_id');
     const parsedFunnelId = funnelId ? parseInt(funnelId) : null;
@@ -50,7 +51,7 @@ export async function GET(request: Request) {
         'Content-Disposition': `attachment; filename="icp_export_${new Date().toISOString().split('T')[0]}.csv"`,
       },
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

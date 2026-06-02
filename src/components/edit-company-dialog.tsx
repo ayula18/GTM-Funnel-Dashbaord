@@ -20,10 +20,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CATEGORIES } from '@/lib/types';
+import type { CompanyRow } from '@/lib/types';
+import { errorMessage } from '@/lib/utils';
 import { toast } from 'sonner';
 
+type MergedCompany = { id: number; domain: string; company_name: string | null };
+
 interface EditCompanyDialogProps {
-  company: any;
+  company: CompanyRow;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: () => void;
@@ -42,7 +46,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
   const [notes, setNotes] = useState(company.observations || '');
   const [mergeDomain, setMergeDomain] = useState('');
   const [merging, setMerging] = useState(false);
-  const [mergedCompanies, setMergedCompanies] = useState<any[]>([]);
+  const [mergedCompanies, setMergedCompanies] = useState<MergedCompany[]>([]);
   const [unmergingId, setUnmergingId] = useState<number | null>(null);
 
   // Fetch full company details when opened (to get merged companies)
@@ -85,8 +89,8 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
       
       toast.success('Company updated');
       onSave();
-    } catch (error: any) {
-      toast.error('Error updating company', { description: error.message });
+    } catch (error) {
+      toast.error('Error updating company', { description: errorMessage(error) });
     } finally {
       setLoading(false);
     }
@@ -123,8 +127,8 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
 
       toast.success(`Successfully merged into ${data1.data[0].domain}`);
       onSave();
-    } catch (error: any) {
-      toast.error('Merge failed', { description: error.message });
+    } catch (error) {
+      toast.error('Merge failed', { description: errorMessage(error) });
     } finally {
       setMerging(false);
     }
@@ -144,8 +148,8 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
       toast.success(`Successfully unmerged ${domain}`);
       setMergedCompanies(prev => prev.filter(c => c.id !== secondaryId));
       onSave();
-    } catch (error: any) {
-      toast.error('Unmerge failed', { description: error.message });
+    } catch (error) {
+      toast.error('Unmerge failed', { description: errorMessage(error) });
     } finally {
       setUnmergingId(null);
     }
@@ -172,7 +176,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">ICP Decision</Label>
             <div className="col-span-3">
-              <Select value={icpDecision} onValueChange={setIcpDecision}>
+              <Select value={icpDecision} onValueChange={v => setIcpDecision(v ?? '')}>
                 <SelectTrigger className="bg-card border-border">
                   <SelectValue placeholder="Select decision" />
                 </SelectTrigger>
@@ -188,7 +192,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">Manual ICP</Label>
             <div className="col-span-3">
-              <Select value={manualIcp} onValueChange={setManualIcp}>
+              <Select value={manualIcp} onValueChange={v => setManualIcp(v ?? '')}>
                 <SelectTrigger className="bg-card border-border">
                   <SelectValue placeholder="None" />
                 </SelectTrigger>
@@ -204,7 +208,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">Category</Label>
             <div className="col-span-3">
-              <Select value={category} onValueChange={setCategory}>
+              <Select value={category} onValueChange={v => setCategory(v ?? '')}>
                 <SelectTrigger className="bg-card border-border">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -221,7 +225,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">Classification</Label>
             <div className="col-span-3">
-              <Select value={classification} onValueChange={setClassification}>
+              <Select value={classification} onValueChange={v => setClassification(v ?? '')}>
                 <SelectTrigger className="bg-card border-border">
                   <SelectValue placeholder="Select classification" />
                 </SelectTrigger>
@@ -237,7 +241,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">Confidence</Label>
             <div className="col-span-3">
-              <Select value={confidence} onValueChange={setConfidence}>
+              <Select value={confidence} onValueChange={v => setConfidence(v ?? '')}>
                 <SelectTrigger className="bg-card border-border">
                   <SelectValue placeholder="Select confidence" />
                 </SelectTrigger>

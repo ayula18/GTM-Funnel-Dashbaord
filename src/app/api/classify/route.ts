@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { errorMessage } from '@/lib/utils';
 import { runPipeline } from '@/lib/pipeline/runner';
 import { getFunnel } from '@/lib/db';
 
@@ -9,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'funnel_id required' }, { status: 400 });
     }
 
-    const funnel = await getFunnel(funnel_id) as any;
+    const funnel = await getFunnel(funnel_id);
     if (!funnel) {
       return NextResponse.json({ error: 'Funnel not found' }, { status: 404 });
     }
@@ -33,9 +34,10 @@ export async function POST(request: Request) {
     // We consume the generator but do not block the request
     (async () => {
       try {
+        // Drain the generator (it updates the DB internally) without binding.
         const generator = runPipeline(funnel_id, apiKey, unclassifiedCount);
-        for await (const progress of generator) {
-          // just consuming the generator which updates the DB internally
+        for (let next = await generator.next(); !next.done; next = await generator.next()) {
+          // side effects only
         }
       } catch (e) {
         console.error('Pipeline background error:', e);
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, message: 'Classification started' });
 
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

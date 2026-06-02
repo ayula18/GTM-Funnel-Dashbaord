@@ -9,7 +9,16 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Play, Download, ListChecks, AlertTriangle, XCircle, Upload, GitMerge } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, errorMessage } from '@/lib/utils';
+import type { FunnelWithStats, FunnelSteps } from '@/lib/types';
+
+type FunnelDetail = FunnelWithStats & {
+  steps?: FunnelSteps;
+  classification_status?: string | null;
+  classification_completed?: number;
+  classification_total?: number;
+  classification_current_domain?: string;
+};
 import { UploadToFunnelDialog } from '@/components/upload-to-funnel-dialog';
 import { MergeReviewPanel } from '@/components/merge-review-panel';
 
@@ -17,7 +26,7 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
   const { id } = use(params);
   const funnelId = parseInt(id);
 
-  const [funnel, setFunnel] = useState<any>(null);
+  const [funnel, setFunnel] = useState<FunnelDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState('all');
@@ -125,8 +134,8 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
 
       setPipelineState(prev => ({ ...prev, status: 'running', errors: [] }));
       toast.info('Classification pipeline started in background');
-    } catch (error: any) {
-      toast.error('Pipeline error', { description: error.message });
+    } catch (error) {
+      toast.error('Pipeline error', { description: errorMessage(error) });
       setPipelineState(prev => ({ ...prev, status: 'error' }));
     }
   };
@@ -142,7 +151,7 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
       });
       toast.info('Classification stopped.');
       fetchFunnel();
-    } catch (error: any) {
+    } catch {
       toast.error('Failed to stop pipeline');
     }
   };
@@ -169,8 +178,8 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
       const data = await res.json();
       toast.success(`Pushed ${data.pushed} companies to Master ICP list`);
       fetchFunnel();
-    } catch (e: any) {
-      toast.error('Failed', { description: e.message });
+    } catch (e) {
+      toast.error('Failed', { description: errorMessage(e) });
     }
   };
 
@@ -223,8 +232,8 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Funnel Bar */}
-      <FunnelBar 
-        steps={funnel.steps} 
+      <FunnelBar
+        steps={funnel.steps ?? null}
         activeStep={activeStep} 
         onStepClick={setActiveStep} 
         onUploadClick={() => setIsUploadOpen(true)}

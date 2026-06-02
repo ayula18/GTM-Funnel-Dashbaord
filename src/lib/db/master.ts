@@ -1,4 +1,4 @@
-import { qp, qdb, withTx } from './core';
+import { qp, withTx } from './core';
 
 // ── Master ICP ────────────────────────────────────────────────────────
 
