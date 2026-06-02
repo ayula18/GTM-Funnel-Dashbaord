@@ -11,9 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
+import {
   ChevronLeft, ChevronRight, Search, ExternalLink, Edit2,
-  Download, ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal
+  ArrowUpDown, ArrowUp, ArrowDown, GitMerge
 } from "lucide-react";
 import { formatCurrency, formatNumber, cn } from '@/lib/utils';
 import { EditCompanyDialog } from './edit-company-dialog';
@@ -125,7 +125,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
 
   useEffect(() => {
     setPage(1);
-  }, [search, externalFilters, columnFilters, rangeFilters]);
+  }, [search, externalFilters, columnFilters, rangeFilters, maOnly]);
 
   useEffect(() => {
     fetchData();
@@ -294,6 +294,19 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
           onChange={(min, max) => setRangeFilters(prev => ({ ...prev, funding: { min, max } }))}
           formatAs="currency"
         />
+
+        <div className="h-6 w-px bg-border mx-1" />
+
+        <Button
+          variant={maOnly ? 'default' : 'outline'}
+          size="sm"
+          className="h-9 gap-1.5 text-xs"
+          onClick={() => setMaOnly(v => !v)}
+          title="Show only acquired / subsidiary companies (M&A)"
+        >
+          <GitMerge className="w-3.5 h-3.5" />
+          M&A only
+        </Button>
       </div>
 
       {/* Active filter pills */}

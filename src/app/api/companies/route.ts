@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     });
 
     // Boolean filters
-    ['is_netnew', 'needs_manual_review', 'is_in_apollo'].forEach(key => {
+    ['is_netnew', 'needs_manual_review', 'is_in_apollo', 'is_subsidiary'].forEach(key => {
       const val = url.searchParams.get(key);
       if (val !== null && val !== '') filters[key] = val === 'true' || val === '1';
     });

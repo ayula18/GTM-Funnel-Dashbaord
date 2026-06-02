@@ -8,6 +8,9 @@ import {
   Building2, Globe, Users, DollarSign, Link2, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { formatCurrency, formatNumber, cn } from '@/lib/utils';
+import { AcquiredBadge } from './acquired-badge';
+import { parseSubsidiaryOf } from '@/lib/ma-utils';
+import { normalizeDomain } from '@/lib/domain-utils';
 import { toast } from 'sonner';
 
 interface MergeCandidate {
@@ -28,6 +31,7 @@ interface MergeCandidate {
   category_1: string | null;
   country_1: string | null;
   website_1: string | null;
+  subsidiary_1: string | null;
   domain_2: string;
   name_2: string | null;
   linkedin_2: string | null;
@@ -38,6 +42,7 @@ interface MergeCandidate {
   category_2: string | null;
   country_2: string | null;
   website_2: string | null;
+  subsidiary_2: string | null;
 }
 
 interface MergeReviewPanelProps {
@@ -170,7 +175,20 @@ export function MergeReviewPanel({ funnelId, onMergeComplete }: MergeReviewPanel
       </div>
 
       {/* Candidate Cards */}
-      {candidates.map((c) => (
+      {candidates.map((c) => {
+        // Detect a parent↔subsidiary (M&A) relationship: one side's
+        // "Subsidiary of" domain points at the other side's domain. These are
+        // NOT duplicates — they should be kept as separate entities.
+        const p1 = parseSubsidiaryOf(c.subsidiary_1);
+        const p2 = parseSubsidiaryOf(c.subsidiary_2);
+        const d1 = normalizeDomain(c.domain_1);
+        const d2 = normalizeDomain(c.domain_2);
+        const isMaPair = Boolean(
+          (p1?.domain && normalizeDomain(p1.domain) === d2) ||
+          (p2?.domain && normalizeDomain(p2.domain) === d1),
+        );
+
+        return (
         <div key={c.id} className="rounded-lg border border-border bg-card overflow-hidden transition-all">
           {/* Summary Row */}
           <div 
@@ -185,16 +203,24 @@ export function MergeReviewPanel({ funnelId, onMergeComplete }: MergeReviewPanel
                 {c.name_1 || c.domain_1}
               </span>
               <span className="text-xs text-muted-foreground font-mono">{c.domain_1}</span>
-              
+              <AcquiredBadge subsidiaryOf={c.subsidiary_1} variant="compact" />
+
               <span className="text-muted-foreground text-xs">↔</span>
-              
+
               {/* Company 2 */}
               <span className="text-sm font-medium truncate">
                 {c.name_2 || c.domain_2}
               </span>
               <span className="text-xs text-muted-foreground font-mono">{c.domain_2}</span>
+              <AcquiredBadge subsidiaryOf={c.subsidiary_2} variant="compact" />
             </div>
-            
+
+            {isMaPair && (
+              <Badge className="shrink-0 text-[10px] gap-1 border-violet-500/30 bg-violet-500/10 text-violet-600">
+                <GitMerge className="h-3 w-3" /> M&A — keep separate
+              </Badge>
+            )}
+
             <Badge className={cn("shrink-0 text-[10px]", confidenceColor(c.confidence))}>
               {c.confidence}
             </Badge>
@@ -212,6 +238,16 @@ export function MergeReviewPanel({ funnelId, onMergeComplete }: MergeReviewPanel
           {/* Expanded Detail */}
           {expandedId === c.id && (
             <div className="border-t border-border px-4 py-4 bg-muted/5">
+              {isMaPair && (
+                <div className="mb-3 flex items-start gap-2 rounded-md border border-violet-500/30 bg-violet-500/10 px-3 py-2">
+                  <GitMerge className="h-4 w-4 text-violet-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-violet-700 dark:text-violet-300">
+                    <span className="font-medium">Acquisition / subsidiary relationship.</span> One of these is owned
+                    by the other. They have separate domains and operations — keep them as
+                    separate companies (choose <span className="font-medium">Different companies</span>) rather than merging.
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 {/* Company 1 Card */}
                 <CompanyCard
@@ -224,7 +260,7 @@ export function MergeReviewPanel({ funnelId, onMergeComplete }: MergeReviewPanel
                   classification={c.classification_1}
                   category={c.category_1}
                   country={c.country_1}
-                  website={c.website_1}
+                  subsidiaryOf={c.subsidiary_1}
                   label="Company A (will be kept)"
                   highlight
                 />
@@ -239,7 +275,7 @@ export function MergeReviewPanel({ funnelId, onMergeComplete }: MergeReviewPanel
                   classification={c.classification_2}
                   category={c.category_2}
                   country={c.country_2}
-                  website={c.website_2}
+                  subsidiaryOf={c.subsidiary_2}
                   label="Company B (will be merged in)"
                 />
               </div>
@@ -277,13 +313,14 @@ export function MergeReviewPanel({ funnelId, onMergeComplete }: MergeReviewPanel
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-function CompanyCard({ 
-  domain, name, linkedin, employees, funding, icp, classification, category, country, website, label, highlight 
+function CompanyCard({
+  domain, name, linkedin, employees, funding, icp, classification, category, country, subsidiaryOf, label, highlight
 }: {
   domain: string;
   name: string | null;
@@ -294,7 +331,7 @@ function CompanyCard({
   classification: string | null;
   category: string | null;
   country: string | null;
-  website: string | null;
+  subsidiaryOf: string | null;
   label: string;
   highlight?: boolean;
 }) {
@@ -305,9 +342,10 @@ function CompanyCard({
     )}>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</div>
       
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <span className="text-sm font-semibold truncate">{name || 'Unknown'}</span>
+        <AcquiredBadge subsidiaryOf={subsidiaryOf} variant="full" />
       </div>
       
       <div className="flex items-center gap-2">

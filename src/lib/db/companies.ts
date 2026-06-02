@@ -110,6 +110,7 @@ export async function getCompanies(funnelId: number | null, filters: Record<stri
     }
   }
 
+  if (filters.is_subsidiary === true) { conditions.push("c.subsidiary_of IS NOT NULL AND c.subsidiary_of != ''"); }
   if (filters.is_netnew          !== undefined) { conditions.push('c.is_netnew = ?');          values.push(filters.is_netnew ? 1 : 0); }
   if (filters.needs_manual_review !== undefined) { conditions.push('c.needs_manual_review = ?'); values.push(filters.needs_manual_review ? 1 : 0); }
   if (filters.is_in_apollo        !== undefined) { conditions.push('c.is_in_apollo = ?');        values.push(filters.is_in_apollo ? 1 : 0); }
@@ -275,7 +276,7 @@ export async function getDashboardStats(funnelId?: number) {
   const [
     total, inApollo, icpYes, icpNo, icpReview, netnew,
     deadDomains, falseNegatives, totalClassified, scrapeSuccess,
-    funnelCount, masterIcpCount,
+    funnelCount, masterIcpCount, acquiredCount,
     classBreakdown, catBreakdown, confBreakdown, typeBreakdown, fitBreakdown, discardBreakdown,
   ] = await Promise.all([
     qdb(`SELECT COUNT(*) AS c ${fromClause} ${whereClause || ''}`, params).then((rows: any[]) => Number(rows[0].c)),
@@ -290,6 +291,7 @@ export async function getDashboardStats(funnelId?: number) {
     cnt("c.scrape_status = 'success'"),
     qp("SELECT COUNT(*) AS c FROM funnels WHERE status = 'active'").then(rows => Number(rows[0].c)),
     getMasterIcpCount(),
+    cnt("c.subsidiary_of IS NOT NULL AND c.subsidiary_of != ''"),
     grp('c.company_classification'),
     grp('c.category'),
     grp('c.confidence'),
@@ -309,6 +311,7 @@ export async function getDashboardStats(funnelId?: number) {
     netnew,
     funnel_count:             funnelCount,
     master_icp_count:         masterIcpCount,
+    acquired_count:           acquiredCount,
     dead_domains:             deadDomains,
     false_negatives:          falseNegatives,
     scrape_success_rate:      scrapeSuccessRate,

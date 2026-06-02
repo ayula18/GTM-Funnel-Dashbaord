@@ -41,8 +41,8 @@ export function AcquiredBadge({
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="inline-flex">{pill}</span>
+      <TooltipTrigger render={<span className="inline-flex" />}>
+        {pill}
       </TooltipTrigger>
       <TooltipContent className="max-w-xs">
         <div className="space-y-1">

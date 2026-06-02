@@ -161,10 +161,12 @@ export async function getMergeCandidates(funnelId?: number) {
       c1.apollo_employees AS employees_1, c1.total_funding AS funding_1,
       c1.icp_decision AS icp_1, c1.company_classification AS classification_1,
       c1.category AS category_1, c1.company_country AS country_1, c1.website AS website_1,
+      c1.subsidiary_of AS subsidiary_1,
       c2.domain AS domain_2, c2.company_name AS name_2, c2.company_linkedin_url AS linkedin_2,
       c2.apollo_employees AS employees_2, c2.total_funding AS funding_2,
       c2.icp_decision AS icp_2, c2.company_classification AS classification_2,
-      c2.category AS category_2, c2.company_country AS country_2, c2.website AS website_2
+      c2.category AS category_2, c2.company_country AS country_2, c2.website AS website_2,
+      c2.subsidiary_of AS subsidiary_2
     FROM merge_candidates mc
     JOIN companies c1 ON mc.company_id_1 = c1.id
     JOIN companies c2 ON mc.company_id_2 = c2.id

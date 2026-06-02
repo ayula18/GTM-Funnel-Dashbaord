@@ -7,7 +7,7 @@ import { formatNumber } from '@/lib/utils';
 import Link from 'next/link';
 import { 
   LayoutDashboard, Users, CheckCircle2, XCircle, AlertTriangle,
-  Wifi, WifiOff, Globe, TrendingDown, Eye, ArrowRight
+  Wifi, WifiOff, Globe, TrendingDown, Eye, ArrowRight, GitMerge
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -55,8 +55,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards - Row 2: Quality Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard label="NetNew" value={s.netnew} icon={<TrendingDown className="w-4 h-4" />} color="green" />
+        <StatCard label="M&A / Subsidiary" value={s.acquired_count} icon={<GitMerge className="w-4 h-4" />} color="purple" subtitle="Acquired, kept separate" />
         <StatCard label="Dead Domains" value={s.dead_domains} icon={<WifiOff className="w-4 h-4" />} color="red" />
         <StatCard label="False Negatives" value={s.false_negatives} icon={<Eye className="w-4 h-4" />} color="amber" subtitle="No → Manual Yes" />
         <StatCard label="Scrape Success" value={`${s.scrape_success_rate}%`} icon={<Wifi className="w-4 h-4" />} color="blue" />
