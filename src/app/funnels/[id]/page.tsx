@@ -7,7 +7,7 @@ import { PipelineProgress } from '@/components/pipeline-progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Download, ListChecks, AlertTriangle, XCircle, Upload, GitMerge, History } from 'lucide-react';
+import { Play, Download, ListChecks, AlertTriangle, XCircle, Upload, GitMerge, History, FileSpreadsheet, CloudUpload } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatNumber, errorMessage } from '@/lib/utils';
 import type { FunnelWithStats, FunnelSteps } from '@/lib/types';
@@ -34,6 +34,8 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [mergeCandidateCount, setMergeCandidateCount] = useState(0);
+  const [drivePending, setDrivePending] = useState(false);
+  const [driveStatus, setDriveStatus] = useState<{ configured: boolean; ok: boolean; folderName?: string; error?: string } | null>(null);
   
   const [pipelineState, setPipelineState] = useState<{
     status: 'idle' | 'running' | 'stopping' | 'completed' | 'error';
@@ -74,6 +76,16 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
       .then(data => setMergeCandidateCount(data.count || 0))
       .catch(() => {});
   }, [fetchFunnel, funnelId]);
+
+  // Drive connection status for the export indicator.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/export/drive')
+      .then(res => res.json())
+      .then(data => { if (!cancelled) setDriveStatus(data); })
+      .catch(() => { if (!cancelled) setDriveStatus({ configured: false, ok: false }); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -165,6 +177,32 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
     window.open(url, '_blank');
   };
 
+  const handleExportExcel = () => {
+    window.open(`/api/export/xlsx?funnel_id=${funnelId}`, '_blank');
+    toast.info('Building Excel workbook — your download will start shortly.');
+  };
+
+  const handleSyncToDrive = async () => {
+    setDrivePending(true);
+    try {
+      const res = await fetch('/api/export/drive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ funnel_id: funnelId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Drive sync failed');
+      toast.success('Saved to Google Drive', {
+        description: data.fileName,
+        action: data.link ? { label: 'Open', onClick: () => window.open(data.link, '_blank') } : undefined,
+      });
+    } catch (error) {
+      toast.error('Drive sync failed', { description: errorMessage(error) });
+    } finally {
+      setDrivePending(false);
+    }
+  };
+
   const handlePushToMaster = async () => {
     if (selectedIds.length === 0) {
       toast.error('No companies selected');
@@ -221,6 +259,29 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
+          <Button variant="outline" onClick={handleExportExcel}>
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Excel
+          </Button>
+          <div className="flex flex-col items-center">
+            <Button variant="outline" onClick={handleSyncToDrive} disabled={drivePending}>
+              <CloudUpload className="w-4 h-4 mr-2" />
+              {drivePending ? 'Saving…' : 'To Drive'}
+            </Button>
+            {driveStatus && (
+              <span
+                className="flex items-center gap-1 text-[10px] mt-1 text-muted-foreground"
+                title={
+                  driveStatus.ok ? `Connected — folder: ${driveStatus.folderName || 'shared'}`
+                  : driveStatus.configured ? (driveStatus.error || 'Configured but folder unreachable')
+                  : 'Set GOOGLE_SERVICE_ACCOUNT_B64 + GDRIVE_FOLDER_ID'
+                }
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${driveStatus.ok ? 'bg-emerald-500' : driveStatus.configured ? 'bg-amber-500' : 'bg-muted-foreground/40'}`} />
+                {driveStatus.ok ? 'Drive connected' : driveStatus.configured ? 'Drive error' : 'Drive not set up'}
+              </span>
+            )}
+          </div>
           <Button 
             onClick={runPipeline}
             disabled={pipelineState.status === 'running' || pipelineState.status === 'stopping' || funnel.unclassified === 0}
