@@ -140,11 +140,29 @@ export interface UploadResult {
   duplicates_skipped: number;
   domain_conflicts: number;
   fields_updated: Record<string, number>; // field_name → count
+  skipped_fields: Record<string, number>; // field_name → count blocked by source policy
+  batch_id?: number;                       // upload_batches.id, for rollback
   errors: string[];
 }
 
 export interface CsvColumnMapping {
   [csvHeader: string]: keyof Company | null;
+}
+
+export interface UploadBatch {
+  id: number;
+  funnel_id: number;
+  source_type: CsvSourceType;
+  source_file: string | null;
+  status: 'applied' | 'rolled_back';
+  total_rows: number;
+  new_companies: number;
+  matched_companies: number;
+  fields_updated: Record<string, number> | null;
+  skipped_fields: Record<string, number> | null;
+  is_manual_mapping: number;
+  created_at: string;
+  rolled_back_at: string | null;
 }
 
 // ── Pipeline ─────────────────────────────────────────────────────────────

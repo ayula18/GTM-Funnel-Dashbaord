@@ -68,6 +68,141 @@ export async function detectSourceFromFile(file: File): Promise<CsvSourceType> {
   return detectCsvSource(headers);
 }
 
+// ── Column auto-mapping (client-safe) ────────────────────────────────────────
+// Header → company field. Shared by the server importer AND the client mapping
+// editor (so the editor's defaults match what auto-import would do).
+
+export const COLUMN_MAP: Record<string, string> = {
+  'company name':           'company_name',
+  'company name for emails':'_skip',
+  'company':                'company_name',
+  'name':                   'company_name',
+  'organization name':      'company_name',
+  'org name':               'company_name',
+  'domain':                 'domain',
+  'domains':                'domain',
+  'domain name':            'domain',
+  'company domain':         'domain',
+  'website':                'website',
+  'website url':            'website',
+  'url':                    'website',
+
+  '# employees':            'apollo_employees',
+  'apollo employees':       'apollo_employees',
+  'apollo employee count':  'apollo_employees',
+  'employees':              'apollo_employees',
+  '# of employees':         'apollo_employees',
+  'number of employees':    'apollo_employees',
+  'employee count':         'apollo_employees',
+  'employee reo':           'employee_reo',
+  'employee_reo':           'employee_reo',
+  'reodb employee count':   'employee_reo',
+  'reo employee':           'employee_reo',
+  'reo employees':          'employee_reo',
+  'reo employee count':     'employee_reo',
+  'employee count reo':     'employee_reo',
+
+  'company linkedin url':   'company_linkedin_url',
+  'company linkedin':       'company_linkedin_url',
+  'linkedin':               'company_linkedin_url',
+  'linkedin url':           'company_linkedin_url',
+  'linkedin company url':   'company_linkedin_url',
+
+  'company country':        'company_country',
+  'country':                'company_country',
+  'hq country':             'company_country',
+  'headquarters location':  'company_country',
+  'hq location':            'company_country',
+
+  'total funding':          'total_funding',
+  'total funding amount':   'total_funding',
+
+  'crunchbase funding':     'crunchbase_funding',
+  'cb funding total':       'crunchbase_funding',
+  'funding total':          'crunchbase_funding',
+  'crunchbase_funding':     'crunchbase_funding',
+
+  'latest funding':         'latest_funding',
+  'latest funding type':    'latest_funding',
+  'last funding type':      'latest_funding',
+  'latest funding amount':  'latest_funding_amount',
+  'last raised at':         'last_raised_at',
+  'last funding date':      'last_raised_at',
+  'founded date':           'founded_year',
+
+  'annual revenue':         'annual_revenue',
+  'revenue':                'annual_revenue',
+  'revenue reo':            'revenue_reo',
+  'revenue_reo':            'revenue_reo',
+  'reo revenue':            'revenue_reo',
+
+  'sic codes':              'sic_codes',
+  'sic':                    'sic_codes',
+  'naics codes':            'naics_codes',
+  'naics':                  'naics_codes',
+  'industries':             'category',
+
+  'short description':      'short_description',
+  'description':            'short_description',
+  'company description':    'short_description',
+
+  'founded year':           'founded_year',
+  'year founded':           'founded_year',
+  'subsidiary of':          'subsidiary_of',
+  'parent company':         'subsidiary_of',
+  'is in apollo':           'is_in_apollo',
+  'apollo account id':      '_skip',
+  'cb rank':                '_skip',
+  'cb rank (company)':      '_skip',
+
+  'icp new':                'icp_decision',
+  'icp':                    'icp_decision',
+  'icp decision':           'icp_decision',
+  'is icp':                 'icp_decision',
+  'is devtool?':            'is_devtool',
+  'is devtool':             'is_devtool',
+  'is services?':           'company_classification',
+  'company classification': 'company_classification',
+  'catogery':               'category',
+  'category':               'category',
+  'sub category':           'sub_category',
+  'sub_category':           'sub_category',
+  'confidence':             'confidence',
+  'manual icp':             'manual_icp',
+  'company type':           'company_type',
+  'icp fit level':          'icp_fit_level',
+  'is netnew?':             'is_netnew',
+  'is netnew':              'is_netnew',
+  'observations':           'observations',
+  'reason':                 'classification_reason',
+  'scrape status':          'scrape_status',
+  'needs manual review':    'needs_manual_review',
+  'non profit ?':           'is_nonprofit',
+  'non profit':             'is_nonprofit',
+};
+
+export function normalizeHeader(header: string): string {
+  return header.trim().toLowerCase().replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ');
+}
+
+/** Auto-detected field for a single header, or null if it maps to nothing / _skip. */
+export function autoMapField(header: string): string | null {
+  const field = COLUMN_MAP[normalizeHeader(header)];
+  return field && field !== '_skip' ? field : null;
+}
+
+/**
+ * Browser helper: read the header row + first data row of a file so the upload
+ * UI can show a column-mapping editor with sample values.
+ */
+export async function parseCsvPreview(file: File): Promise<{ headers: string[]; sample: string[] }> {
+  const text = await file.slice(0, 65536).text();
+  const parsed = Papa.parse<string[]>(text, { header: false, preview: 2, skipEmptyLines: true });
+  const headers = (parsed.data[0] as string[]) || [];
+  const sample  = (parsed.data[1] as string[]) || [];
+  return { headers, sample };
+}
+
 /** Human-readable labels for each source type — shared by upload UIs. */
 export const SOURCE_LABELS: Record<CsvSourceType, string> = {
   apollo:      'Apollo Export',

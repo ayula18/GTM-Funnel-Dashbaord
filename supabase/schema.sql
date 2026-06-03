@@ -148,6 +148,39 @@ CREATE TABLE IF NOT EXISTS app_settings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ── Enrichment versioning (v3) ──────────────────────────────────────────────
+-- Every CSV upload becomes one batch. company_field_changes records the BEFORE
+-- and AFTER value of every field a batch touched, so an upload can be rolled
+-- back to its exact prior state.
+
+CREATE TABLE IF NOT EXISTS upload_batches (
+  id                SERIAL PRIMARY KEY,
+  funnel_id         INTEGER REFERENCES funnels(id) ON DELETE CASCADE,
+  source_type       TEXT NOT NULL,
+  source_file       TEXT,
+  status            TEXT DEFAULT 'applied',   -- 'applied' | 'rolled_back'
+  total_rows        INTEGER DEFAULT 0,
+  new_companies     INTEGER DEFAULT 0,
+  matched_companies INTEGER DEFAULT 0,
+  fields_updated    JSONB,                    -- { field: count }
+  skipped_fields    JSONB,                    -- { field: count } blocked by source policy
+  mapping           JSONB,                    -- effective header → field map used
+  is_manual_mapping INTEGER DEFAULT 0,
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  rolled_back_at    TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS company_field_changes (
+  id         BIGSERIAL PRIMARY KEY,
+  batch_id   INTEGER NOT NULL REFERENCES upload_batches(id) ON DELETE CASCADE,
+  company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  field      TEXT NOT NULL,
+  old_value  TEXT,          -- NULL = field was empty before this batch
+  new_value  TEXT,
+  was_insert INTEGER DEFAULT 0,  -- 1 if this batch created the company row
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ── Indexes ───────────────────────────────────────────────────────────────
 
 CREATE INDEX IF NOT EXISTS idx_companies_domain         ON companies(domain);
@@ -163,3 +196,6 @@ CREATE INDEX IF NOT EXISTS idx_aliases_root             ON domain_aliases(root_n
 CREATE INDEX IF NOT EXISTS idx_aliases_company          ON domain_aliases(company_id);
 CREATE INDEX IF NOT EXISTS idx_aliases_core_root        ON domain_aliases(core_root);
 CREATE INDEX IF NOT EXISTS idx_merge_candidates_status  ON merge_candidates(status);
+CREATE INDEX IF NOT EXISTS idx_upload_batches_funnel    ON upload_batches(funnel_id);
+CREATE INDEX IF NOT EXISTS idx_field_changes_batch      ON company_field_changes(batch_id);
+CREATE INDEX IF NOT EXISTS idx_field_changes_company    ON company_field_changes(company_id);

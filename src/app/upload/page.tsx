@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { formatNumber, errorMessage } from '@/lib/utils';
 import { detectSourceFromFile } from '@/lib/csv-detect';
+import { uploadCsv, type UploadProgress } from '@/lib/upload-client';
 import type { CsvSourceType, UploadResult } from '@/lib/types';
 
 const SOURCE_INFO: Record<string, { label: string; icon: React.ReactNode; color: string; desc: string }> = {
@@ -34,6 +35,7 @@ export default function UploadPage() {
   const [sourceOverride, setSourceOverride] = useState<CsvSourceType | 'auto'>('auto');
   const [masterFile, setMasterFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [masterLoading, setMasterLoading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
 
@@ -61,6 +63,7 @@ export default function UploadPage() {
 
     setLoading(true);
     setResult(null);
+    setProgress(null);
 
     try {
       const formData = new FormData();
@@ -69,11 +72,8 @@ export default function UploadPage() {
       formData.append('type', 'companies');
       if (effectiveSource !== 'unknown') formData.append('source_type', effectiveSource);
 
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      const data = await res.json();
-      
-      if (!res.ok) throw new Error(data.error || 'Upload failed');
-      
+      const data = await uploadCsv(formData, setProgress);
+
       setResult(data);
       toast.success('Funnel created successfully!');
     } catch (error) {
@@ -188,6 +188,29 @@ export default function UploadPage() {
                     </Select>
                   </div>
                   <p className="text-[11px] text-muted-foreground leading-snug">{SOURCE_INFO[effectiveSource]?.desc}</p>
+                </div>
+              )}
+
+              {loading && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      {progress?.finalizing ? 'Finalizing…'
+                        : progress ? 'Importing rows…'
+                        : 'Reading & parsing file…'}
+                    </span>
+                    <span className="tabular-nums">
+                      {progress && progress.total > 0
+                        ? `${progress.pct}% · ${formatNumber(progress.processed)}/${formatNumber(progress.total)}`
+                        : ''}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-full bg-primary transition-all duration-300 ${progress ? '' : 'animate-pulse'}`}
+                      style={{ width: `${progress ? Math.max(progress.pct, 3) : 8}%` }}
+                    />
+                  </div>
                 </div>
               )}
 

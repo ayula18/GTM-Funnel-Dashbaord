@@ -1,5 +1,7 @@
 import { pool, qp, qdb, withTx } from './core';
 import { getMasterIcpCount } from './master';
+import { writePolicy } from '../source-policy';
+import type { CsvSourceType } from '../types';
 
 // ── Company Queries ────────────────────────────────────────────────────────
 
@@ -18,45 +20,89 @@ const ALL_COMPANY_FIELDS = [
   'is_nonprofit', 'icp_rerun_count', 'last_icp_method',
 ];
 
-export async function upsertCompany(data: Record<string, unknown>): Promise<number> {
+export interface FieldChange {
+  field: string;
+  old_value: string | null;
+  new_value: string | null;
+}
+
+export interface UpsertResult {
+  id: number;
+  wasInsert: boolean;
+  applied: FieldChange[];   // fields actually written (with before/after) — the audit trail
+  skipped: string[];        // fields blocked by source policy (owned by another source)
+}
+
+const toText = (v: unknown): string | null =>
+  v === null || v === undefined ? null : String(v);
+
+/**
+ * Upsert a company while ENFORCING source ownership and CAPTURING every change.
+ *
+ * `opts.source`         — the CSV source, drives the write policy (see source-policy.ts).
+ * `opts.explicitFields` — fields the user manually mapped; they bypass the lock
+ *                          and always overwrite (the deliberate escape hatch).
+ *
+ * Returns the exact set of applied changes (old → new) so the caller can write
+ * an audit row per change and support rollback.
+ */
+export async function upsertCompanyTracked(
+  data: Record<string, unknown>,
+  opts: { source: CsvSourceType; explicitFields?: Set<string> },
+): Promise<UpsertResult> {
   const domain = data.domain as string;
-  const existing = await qp('SELECT id FROM companies WHERE domain = $1', [domain]);
+  const explicit = opts.explicitFields ?? new Set<string>();
+  const existingRows = await qp('SELECT * FROM companies WHERE domain = $1', [domain]);
+  const existing = existingRows[0] ?? null;
 
-  if (existing.length) {
-    const existingId = existing[0].id as number;
-    const sets: string[] = [];
-    const values: unknown[] = [];
+  const applied: FieldChange[] = [];
+  const skipped: string[] = [];
 
-    for (const field of ALL_COMPANY_FIELDS) {
-      if (data[field] !== undefined && data[field] !== null && data[field] !== '') {
-        sets.push(`${field} = ?`);
-        values.push(data[field]);
-      }
-    }
-    if (sets.length > 0) {
-      sets.push('updated_at = NOW()');
-      values.push(existingId);
-      await qdb(`UPDATE companies SET ${sets.join(', ')} WHERE id = ?`, values);
-    }
-    return existingId;
-  }
-
-  const cols: string[] = ['domain'];
-  const vals: unknown[] = [domain];
+  // Decide, per candidate field, whether the write is allowed and whether it
+  // actually changes anything.
+  const writes: Array<{ field: string; value: unknown }> = [];
 
   for (const field of ALL_COMPANY_FIELDS) {
-    if (data[field] !== undefined && data[field] !== null && data[field] !== '') {
-      cols.push(field);
-      vals.push(data[field]);
+    const value = data[field];
+    if (value === undefined || value === null || value === '') continue;
+
+    const mode = explicit.has(field) ? 'overwrite' : writePolicy(field, opts.source);
+
+    if (mode === 'skip') { skipped.push(field); continue; }
+
+    const oldVal = existing ? existing[field] : null;
+
+    if (mode === 'fill_empty' && oldVal !== null && oldVal !== undefined && oldVal !== '') {
+      continue; // keep existing — don't clobber another source's value
     }
+
+    const oldText = toText(oldVal);
+    const newText = toText(value);
+    if (oldText === newText) continue; // no-op, nothing to record
+
+    writes.push({ field, value });
+    applied.push({ field, old_value: oldText, new_value: newText });
   }
 
+  if (existing) {
+    const existingId = existing.id as number;
+    if (writes.length > 0) {
+      const sets = writes.map(w => `${w.field} = ?`);
+      sets.push('updated_at = NOW()');
+      const values = [...writes.map(w => w.value), existingId];
+      await qdb(`UPDATE companies SET ${sets.join(', ')} WHERE id = ?`, values);
+    }
+    return { id: existingId, wasInsert: false, applied, skipped };
+  }
+
+  const cols = ['domain', ...writes.map(w => w.field)];
+  const vals = [domain, ...writes.map(w => w.value)];
   const placeholders = vals.map((_, i) => `$${i + 1}`).join(', ');
   const result = await pool().query(
     `INSERT INTO companies (${cols.join(', ')}) VALUES (${placeholders}) RETURNING id`,
     vals,
   );
-  return result.rows[0].id as number;
+  return { id: result.rows[0].id as number, wasInsert: true, applied, skipped };
 }
 
 export async function linkCompanyToFunnel(companyId: number, funnelId: number) {

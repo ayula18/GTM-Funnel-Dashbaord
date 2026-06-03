@@ -1,9 +1,9 @@
 import Papa from 'papaparse';
 import { normalizeDomain, extractRootName, isJunkName } from './domain-utils';
-import { detectCsvSource } from './csv-detect';
+import { detectCsvSource, COLUMN_MAP, normalizeHeader } from './csv-detect';
 export { detectCsvSource } from './csv-detect';
 import {
-  upsertCompany,
+  upsertCompanyTracked,
   linkCompanyToFunnel,
   isInMasterIcp,
   findCompanyByDomainSmart,
@@ -12,123 +12,18 @@ import {
   createMergeCandidate,
   scanForDuplicates,
   addMasterIcp,
+  createUploadBatch,
+  recordFieldChanges,
+  finalizeUploadBatch,
+  deleteUploadBatch,
 } from './db';
+import type { BatchChangeRow, UpsertResult } from './db';
+import { MAPPABLE_FIELD_SET } from './source-policy';
 import { CsvSourceType, UploadResult } from './types';
 
 // ── Column Mapping ─────────────────────────────────────────────────────
-
-const COLUMN_MAP: Record<string, string> = {
-  'company name':           'company_name',
-  'company name for emails':'_skip',
-  'company':                'company_name',
-  'name':                   'company_name',
-  'organization name':      'company_name',
-  'org name':               'company_name',
-  'domain':                 'domain',
-  'domains':                'domain',
-  'domain name':            'domain',
-  'company domain':         'domain',
-  'website':                'website',
-  'website url':            'website',
-  'url':                    'website',
-
-  '# employees':            'apollo_employees',
-  'apollo employees':       'apollo_employees',
-  'apollo employee count':  'apollo_employees',
-  'employees':              'apollo_employees',
-  '# of employees':         'apollo_employees',
-  'number of employees':    'apollo_employees',
-  'employee count':         'apollo_employees',
-  'employee reo':           'employee_reo',
-  'employee_reo':           'employee_reo',
-  'reodb employee count':   'employee_reo',
-  'reo employee':           'employee_reo',
-  'reo employees':          'employee_reo',
-  'reo employee count':     'employee_reo',
-  'employee count reo':     'employee_reo',
-
-  'company linkedin url':   'company_linkedin_url',
-  'company linkedin':       'company_linkedin_url',
-  'linkedin':               'company_linkedin_url',
-  'linkedin url':           'company_linkedin_url',
-  'linkedin company url':   'company_linkedin_url',
-
-  'company country':        'company_country',
-  'country':                'company_country',
-  'hq country':             'company_country',
-  'headquarters location':  'company_country',
-  'hq location':            'company_country',
-
-  'total funding':          'total_funding',
-  'total funding amount':   'total_funding',
-
-  'crunchbase funding':     'crunchbase_funding',
-  'cb funding total':       'crunchbase_funding',
-  'funding total':          'crunchbase_funding',
-  'crunchbase_funding':     'crunchbase_funding',
-
-  'latest funding':         'latest_funding',
-  'latest funding type':    'latest_funding',
-  'last funding type':      'latest_funding',
-  'latest funding amount':  'latest_funding_amount',
-  'last raised at':         'last_raised_at',
-  'last funding date':      'last_raised_at',
-  'founded date':           'founded_year',
-
-  'annual revenue':         'annual_revenue',
-  'revenue':                'annual_revenue',
-  'revenue reo':            'revenue_reo',
-  'revenue_reo':            'revenue_reo',
-  'reo revenue':            'revenue_reo',
-
-  'sic codes':              'sic_codes',
-  'sic':                    'sic_codes',
-  'naics codes':            'naics_codes',
-  'naics':                  'naics_codes',
-  'industries':             'category',
-
-  'short description':      'short_description',
-  'description':            'short_description',
-  'company description':    'short_description',
-
-  'founded year':           'founded_year',
-  'year founded':           'founded_year',
-  'subsidiary of':          'subsidiary_of',
-  'parent company':         'subsidiary_of',
-  'is in apollo':           'is_in_apollo',
-  'apollo account id':      '_skip',
-  'cb rank':                '_skip',
-  'cb rank (company)':      '_skip',
-
-  'icp new':                'icp_decision',
-  'icp':                    'icp_decision',
-  'icp decision':           'icp_decision',
-  'is icp':                 'icp_decision',
-  'is devtool?':            'is_devtool',
-  'is devtool':             'is_devtool',
-  'is services?':           'company_classification',
-  'company classification': 'company_classification',
-  'catogery':               'category',
-  'category':               'category',
-  'sub category':           'sub_category',
-  'sub_category':           'sub_category',
-  'confidence':             'confidence',
-  'manual icp':             'manual_icp',
-  'company type':           'company_type',
-  'icp fit level':          'icp_fit_level',
-  'is netnew?':             'is_netnew',
-  'is netnew':              'is_netnew',
-  'observations':           'observations',
-  'reason':                 'classification_reason',
-  'scrape status':          'scrape_status',
-  'needs manual review':    'needs_manual_review',
-  'non profit ?':           'is_nonprofit',
-  'non profit':             'is_nonprofit',
-};
-
-function normalizeHeader(header: string): string {
-  return header.trim().toLowerCase().replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ');
-}
+// COLUMN_MAP + normalizeHeader live in csv-detect.ts (client-safe) so the
+// upload UI's mapping editor shows the same auto-detected defaults.
 
 function mapHeaders(headers: string[]): Record<number, string> {
   const mapping: Record<number, string> = {};
@@ -166,6 +61,8 @@ export async function parseAndImportCsv(
   funnelName: string,
   sourceType?: CsvSourceType,
   sourceFileName?: string,
+  manualMapping?: Record<string, string> | null,
+  onProgress?: (processed: number, total: number) => void,
 ): Promise<UploadResult> {
   const result: UploadResult = {
     funnel_id:          funnelId,
@@ -178,6 +75,7 @@ export async function parseAndImportCsv(
     duplicates_skipped: 0,
     domain_conflicts:   0,
     fields_updated:     {},
+    skipped_fields:     {},
     errors:             [],
   };
 
@@ -197,11 +95,29 @@ export async function parseAndImportCsv(
     return result;
   }
 
-  const headers       = rows[0];
-  const columnMapping = mapHeaders(headers);
+  const headers = rows[0];
 
   if (!sourceType || sourceType === 'unknown') {
     result.source_type = detectCsvSource(headers);
+  }
+
+  // Build the index → field map. A MANUAL mapping (user picked header → field in
+  // the upload UI) decides WHICH columns import and which column is the domain
+  // key. Source-ownership protection ALWAYS applies — the upload UI only offers
+  // fields this source is allowed to write, so a manual mapping can never write
+  // a column another source owns. No bypass.
+  const isManual = !!manualMapping && Object.keys(manualMapping).length > 0;
+  const columnMapping: Record<number, string> = {};
+
+  if (isManual) {
+    for (let i = 0; i < headers.length; i++) {
+      const field = manualMapping![headers[i]];
+      if (field && field !== '_skip' && MAPPABLE_FIELD_SET.has(field)) {
+        columnMapping[i] = field;
+      }
+    }
+  } else {
+    Object.assign(columnMapping, mapHeaders(headers));
   }
 
   const domainColIdx  = Object.entries(columnMapping).find(([, field]) => field === 'domain')?.[0];
@@ -212,6 +128,17 @@ export async function parseAndImportCsv(
     return result;
   }
 
+  // Open an upload batch — every field write below is logged against it so the
+  // whole upload can be rolled back.
+  const batchId = await createUploadBatch({
+    funnel_id:         funnelId,
+    source_type:       result.source_type,
+    source_file:       sourceFileName ?? null,
+    mapping:           isManual ? manualMapping! : null,
+    is_manual_mapping: isManual,
+  });
+  result.batch_id = batchId;
+
   const seenDomains = new Set<string>();
 
   const dataRows = rows.slice(1);
@@ -221,8 +148,13 @@ export async function parseAndImportCsv(
     );
   
   const chunks = chunkArray(dataRows, 20);
+  const totalRows = dataRows.length;
+  let processedRows = 0;
+  onProgress?.(0, totalRows);
 
   for (const chunk of chunks) {
+    const pending: BatchChangeRow[] = [];
+
     await Promise.all(chunk.map(async (row) => {
       if (!row || row.length < 1) return;
 
@@ -246,7 +178,6 @@ export async function parseAndImportCsv(
         seenDomains.add(domain);
 
         const companyData: Record<string, unknown> = { domain };
-        const fieldsSet: string[] = [];
 
         for (const [colIdx, field] of Object.entries(columnMapping)) {
           const value = row[parseInt(colIdx)]?.trim();
@@ -266,27 +197,21 @@ export async function parseAndImportCsv(
             case 'crunchbase_funding':
             case 'revenue_reo':
               companyData[field] = parseNumeric(value);
-              if (companyData[field] !== null) fieldsSet.push(field);
               break;
             case 'is_in_apollo':
             case 'needs_manual_review':
             case 'is_nonprofit':
               companyData[field] = parseBoolean(value) ? 1 : 0;
-              fieldsSet.push(field);
               break;
             case 'is_netnew':
               break; // Computed, not imported
             case 'company_name':
               // Never store placeholder names ("Unknown", "N/A", …) — they
               // pollute the data and become false duplicate-matching keys.
-              if (!isJunkName(value)) {
-                companyData.company_name = value;
-                fieldsSet.push('company_name');
-              }
+              if (!isJunkName(value)) companyData.company_name = value;
               break;
             default:
               companyData[field] = value;
-              fieldsSet.push(field);
           }
         }
 
@@ -296,7 +221,6 @@ export async function parseAndImportCsv(
 
         if (result.source_type === 'apollo') {
           companyData.is_in_apollo = 1;
-          if (!fieldsSet.includes('is_in_apollo')) fieldsSet.push('is_in_apollo');
         }
 
         // Check NetNew status
@@ -310,52 +234,81 @@ export async function parseAndImportCsv(
           companyData.company_linkedin_url as string | undefined,
         );
 
-        let companyId: number;
-        let wasMatched = false;
+        const upsertOpts = { source: result.source_type };
+        let up: UpsertResult;
 
-        if (smartMatch) {
-          if (smartMatch.confidence === 'exact' || smartMatch.confidence === 'high') {
-            companyData.domain = smartMatch.domain;
-            companyId  = await upsertCompany(companyData);
-            wasMatched = true;
-          } else {
-            companyId = await upsertCompany(companyData);
-            await createMergeCandidate(
-              smartMatch.id,
-              companyId,
-              smartMatch.matchType,
-              `${domain} ↔ ${smartMatch.domain} (${smartMatch.matchType})`,
-              smartMatch.confidence,
-            );
-            result.domain_conflicts++;
-          }
+        // SAFETY: only an EXACT domain/alias match auto-enriches the existing
+        // company. Anything less certain (same root but different TLD, core
+        // root, LinkedIn, or name match) is NEVER auto-merged — it's imported as
+        // a SEPARATE company and queued in the Duplicates tab for manual
+        // approve/decline. One wrong auto-merge would corrupt the dashboard.
+        if (smartMatch && smartMatch.confidence === 'exact') {
+          companyData.domain = smartMatch.domain;
+          up = await upsertCompanyTracked(companyData, upsertOpts);
+        } else if (smartMatch) {
+          up = await upsertCompanyTracked(companyData, upsertOpts);
+          await createMergeCandidate(
+            smartMatch.id,
+            up.id,
+            smartMatch.matchType,
+            `${domain} ↔ ${smartMatch.domain} (${smartMatch.matchType})`,
+            smartMatch.confidence,
+          );
+          result.domain_conflicts++;
         } else {
-          companyId = await upsertCompany(companyData);
+          up = await upsertCompanyTracked(companyData, upsertOpts);
         }
+
+        const companyId = up.id;
 
         await linkCompanyToFunnel(companyId, funnelId);
 
         const rootName = extractRootName(domain);
-        await addDomainAlias(companyId, domain, rootName, result.source_type, !wasMatched);
+        await addDomainAlias(companyId, domain, rootName, result.source_type, up.wasInsert);
 
-        if (fieldsSet.length > 0 && sourceFileName) {
-          await addDataSource(companyId, result.source_type, sourceFileName, fieldsSet);
+        // Audit + summary from what was ACTUALLY written (post-policy).
+        for (const c of up.applied) {
+          pending.push({ company_id: companyId, was_insert: up.wasInsert, field: c.field, old_value: c.old_value, new_value: c.new_value });
+          result.fields_updated[c.field] = (result.fields_updated[c.field] || 0) + 1;
+        }
+        for (const s of up.skipped) {
+          result.skipped_fields[s] = (result.skipped_fields[s] || 0) + 1;
         }
 
-        for (const f of fieldsSet) {
-          result.fields_updated[f] = (result.fields_updated[f] || 0) + 1;
+        const appliedNames = up.applied.map(c => c.field);
+        if (appliedNames.length > 0 && sourceFileName) {
+          await addDataSource(companyId, result.source_type, sourceFileName, appliedNames);
         }
 
-        if (wasMatched) {
+        if (up.wasInsert) {
+          result.new_companies++;
+        } else {
           result.matched_companies++;
           result.updated_companies++;
-        } else {
-          result.new_companies++;
         }
       } catch (err) {
         result.errors.push(`Row: ${(err as Error).message}`);
       }
     }));
+
+    await recordFieldChanges(batchId, pending);
+
+    processedRows += chunk.length;
+    onProgress?.(processedRows, totalRows);
+  }
+
+  // Persist the batch summary (or drop the empty shell if nothing was imported).
+  if (result.total_rows === 0 && Object.keys(result.fields_updated).length === 0) {
+    await deleteUploadBatch(batchId);
+    result.batch_id = undefined;
+  } else {
+    await finalizeUploadBatch(batchId, {
+      total_rows:        result.total_rows,
+      new_companies:     result.new_companies,
+      matched_companies: result.matched_companies,
+      fields_updated:    result.fields_updated,
+      skipped_fields:    result.skipped_fields,
+    });
   }
 
   // Post-import: scan for remaining duplicates

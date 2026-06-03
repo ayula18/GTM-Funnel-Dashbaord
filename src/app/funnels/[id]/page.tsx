@@ -7,7 +7,7 @@ import { PipelineProgress } from '@/components/pipeline-progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Download, ListChecks, AlertTriangle, XCircle, Upload, GitMerge } from 'lucide-react';
+import { Play, Download, ListChecks, AlertTriangle, XCircle, Upload, GitMerge, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatNumber, errorMessage } from '@/lib/utils';
 import type { FunnelWithStats, FunnelSteps } from '@/lib/types';
@@ -21,6 +21,7 @@ type FunnelDetail = FunnelWithStats & {
 };
 import { UploadToFunnelDialog } from '@/components/upload-to-funnel-dialog';
 import { MergeReviewPanel } from '@/components/merge-review-panel';
+import { UploadHistoryPanel } from '@/components/upload-history-panel';
 
 export default function FunnelDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -267,6 +268,10 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-600">{mergeCandidateCount}</Badge>
             </TabsTrigger>
           )}
+          <TabsTrigger value="uploads" className="text-xs gap-1.5">
+            <History className="w-3 h-3" />
+            Uploads
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="mt-4 space-y-8">
@@ -322,8 +327,8 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
         </TabsContent>
 
         <TabsContent value="duplicates" className="mt-4">
-          <MergeReviewPanel 
-            funnelId={funnelId} 
+          <MergeReviewPanel
+            funnelId={funnelId}
             onMergeComplete={() => {
               fetchFunnel();
               // Refresh count
@@ -331,8 +336,12 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
                 .then(res => res.json())
                 .then(data => setMergeCandidateCount(data.count || 0))
                 .catch(() => {});
-            }} 
+            }}
           />
+        </TabsContent>
+
+        <TabsContent value="uploads" className="mt-4">
+          <UploadHistoryPanel funnelId={funnelId} onRollback={fetchFunnel} />
         </TabsContent>
       </Tabs>
       

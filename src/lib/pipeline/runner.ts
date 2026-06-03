@@ -36,17 +36,7 @@ export async function* runPipeline(funnelId: number, apiKey: string, totalCount:
           signals.scrape_status = scrapeResult.status;
         }
 
-        const hasAnyContent =
-          signals.page_text.trim().length   > 20 ||
-          signals.nav_text.trim().length    > 10 ||
-          signals.footer_text.trim().length > 10;
-
-        let llmResult = null;
-        if (signals.scrape_status === 'domain_dead' && !hasAnyContent) {
-          llmResult = await classifyCompany(signals, apiKey);
-        } else {
-          llmResult = await classifyCompany(signals, apiKey);
-        }
+        const llmResult = await classifyCompany(signals, apiKey);
 
         const updateData = parseClassificationOutput(llmResult, signals);
         await updateCompany(id, updateData);
