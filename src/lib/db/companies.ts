@@ -356,17 +356,21 @@ export async function setCachedScrape(domain: string, html: string | null, jinaT
 
 export async function getDashboardStats(funnelId?: number) {
   let fromClause  = 'FROM companies c';
-  let whereClause = '';
+  // Always exclude merged-away duplicates so the dashboard agrees with the table
+  // and the funnel bar (both exclude merged_into_id). Without this, every card
+  // and breakdown double-counts folded duplicates.
+  const conditions: string[] = ['c.merged_into_id IS NULL'];
   const params: unknown[] = [];
 
   if (funnelId) {
     fromClause  += ' JOIN funnel_companies fc ON c.id = fc.company_id';
-    whereClause  = 'WHERE fc.funnel_id = ?';
+    conditions.push('fc.funnel_id = ?');
     params.push(funnelId);
   }
+  const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
   const grp = (col: string) =>
-    qdb(`SELECT ${col}, COUNT(*) AS count ${fromClause} ${whereClause ? whereClause + ' AND' : 'WHERE'} ${col} IS NOT NULL AND ${col} != '' GROUP BY ${col} ORDER BY count DESC`, params);
+    qdb(`SELECT ${col}, COUNT(*) AS count ${fromClause} ${whereClause} AND ${col} IS NOT NULL AND ${col} != '' GROUP BY ${col} ORDER BY count DESC`, params);
 
   // All scalar counts in ONE pass via conditional aggregation — instead of a
   // dozen separate COUNT queries that previously exhausted the connection pool.
@@ -382,6 +386,7 @@ export async function getDashboardStats(funnelId?: number) {
       COUNT(*) FILTER (WHERE c.icp_decision = 'No' AND c.manual_icp = 'Yes')        AS false_negatives,
       COUNT(*) FILTER (WHERE c.classified_at IS NOT NULL)                           AS total_classified,
       COUNT(*) FILTER (WHERE c.scrape_status = 'success')                           AS scrape_success,
+      COUNT(*) FILTER (WHERE c.scrape_status IS NOT NULL)                           AS scrape_attempted,
       COUNT(*) FILTER (WHERE c.subsidiary_of IS NOT NULL AND c.subsidiary_of != '') AS acquired_count
     ${fromClause} ${whereClause}
   `;
@@ -411,11 +416,14 @@ export async function getDashboardStats(funnelId?: number) {
   const netnew         = Number(r.netnew);
   const deadDomains    = Number(r.dead_domains);
   const falseNegatives = Number(r.false_negatives);
-  const totalClassified= Number(r.total_classified);
   const scrapeSuccess  = Number(r.scrape_success);
+  const scrapeAttempted= Number(r.scrape_attempted);
   const acquiredCount  = Number(r.acquired_count);
 
-  const scrapeSuccessRate = totalClassified > 0 ? Math.round((scrapeSuccess / totalClassified) * 100) : 0;
+  // Success rate over pages we actually TRIED to scrape (scrape_status set), not
+  // over "classified" — those are different populations and the old ratio could
+  // exceed 100%.
+  const scrapeSuccessRate = scrapeAttempted > 0 ? Math.round((scrapeSuccess / scrapeAttempted) * 100) : 0;
 
   return {
     total,

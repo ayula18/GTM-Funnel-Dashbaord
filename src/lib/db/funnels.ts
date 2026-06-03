@@ -17,13 +17,13 @@ export async function getFunnels() {
       COUNT(fc.id)                                                        AS total_companies,
       SUM(CASE WHEN c.icp_decision = 'Yes'                       THEN 1 ELSE 0 END) AS icp_yes,
       SUM(CASE WHEN c.icp_decision = 'No'                        THEN 1 ELSE 0 END) AS icp_no,
-      SUM(CASE WHEN c.icp_decision = 'Review' OR c.icp_decision IS NULL THEN 1 ELSE 0 END) AS icp_review,
+      SUM(CASE WHEN c.id IS NOT NULL AND (c.icp_decision = 'Review' OR c.icp_decision IS NULL) THEN 1 ELSE 0 END) AS icp_review,
       SUM(CASE WHEN c.classified_at IS NOT NULL                  THEN 1 ELSE 0 END) AS classified,
-      SUM(CASE WHEN c.classified_at IS NULL                      THEN 1 ELSE 0 END) AS unclassified,
+      SUM(CASE WHEN c.id IS NOT NULL AND c.classified_at IS NULL THEN 1 ELSE 0 END) AS unclassified,
       SUM(CASE WHEN c.is_netnew = 1                              THEN 1 ELSE 0 END) AS netnew
     FROM funnels f
     LEFT JOIN funnel_companies fc ON f.id = fc.funnel_id
-    LEFT JOIN companies c ON fc.company_id = c.id
+    LEFT JOIN companies c ON fc.company_id = c.id AND c.merged_into_id IS NULL
     WHERE f.status = 'active'
     GROUP BY f.id
     ORDER BY f.created_at DESC
@@ -33,16 +33,16 @@ export async function getFunnels() {
 export async function getFunnel(id: number) {
   const rows = await qp(`
     SELECT f.*,
-      COUNT(fc.id)                                                        AS total_companies,
+      COUNT(c.id)                                                        AS total_companies,
       SUM(CASE WHEN c.icp_decision = 'Yes'                       THEN 1 ELSE 0 END) AS icp_yes,
       SUM(CASE WHEN c.icp_decision = 'No'                        THEN 1 ELSE 0 END) AS icp_no,
-      SUM(CASE WHEN c.icp_decision = 'Review' OR c.icp_decision IS NULL THEN 1 ELSE 0 END) AS icp_review,
+      SUM(CASE WHEN c.id IS NOT NULL AND (c.icp_decision = 'Review' OR c.icp_decision IS NULL) THEN 1 ELSE 0 END) AS icp_review,
       SUM(CASE WHEN c.classified_at IS NOT NULL                  THEN 1 ELSE 0 END) AS classified,
-      SUM(CASE WHEN c.classified_at IS NULL                      THEN 1 ELSE 0 END) AS unclassified,
+      SUM(CASE WHEN c.id IS NOT NULL AND c.classified_at IS NULL THEN 1 ELSE 0 END) AS unclassified,
       SUM(CASE WHEN c.is_netnew = 1                              THEN 1 ELSE 0 END) AS netnew
     FROM funnels f
     LEFT JOIN funnel_companies fc ON f.id = fc.funnel_id
-    LEFT JOIN companies c ON fc.company_id = c.id
+    LEFT JOIN companies c ON fc.company_id = c.id AND c.merged_into_id IS NULL
     WHERE f.id = $1
     GROUP BY f.id
   `, [id]);

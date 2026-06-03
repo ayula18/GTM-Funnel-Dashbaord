@@ -7,10 +7,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatNumber } from '@/lib/utils';
 import type { DashboardStats, FunnelWithStats } from '@/lib/types';
 import Link from 'next/link';
-import { 
+import {
   LayoutDashboard, Users, CheckCircle2, XCircle, AlertTriangle,
   Wifi, WifiOff, Globe, TrendingDown, Eye, ArrowRight, GitMerge
 } from 'lucide-react';
+
+// Fetch JSON, retrying transient failures (a fresh Vercel deploy's first request
+// can 500 on a cold DB connection). Returns null only after all attempts fail,
+// and never returns an API error body — so the UI is never poisoned with `{error}`.
+async function fetchJsonWithRetry(url: string, attempts = 4): Promise<unknown | null> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && !(data as { error?: unknown }).error) return data;
+      }
+    } catch { /* network/cold-start hiccup — retry */ }
+    await new Promise(r => setTimeout(r, 500 * (i + 1)));
+  }
+  return null;
+}
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -21,21 +38,31 @@ export default function DashboardPage() {
 
   // Funnel list — for the scope selector + the "Active Funnels" section. Once.
   useEffect(() => {
-    fetch('/api/funnels')
-      .then(r => r.json())
-      .then(f => setFunnels(Array.isArray(f) ? f : []))
-      .catch(() => {});
+    let cancelled = false;
+    fetchJsonWithRetry('/api/funnels').then(f => {
+      if (!cancelled && Array.isArray(f)) setFunnels(f);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   // Stats — refetched whenever the selected scope (global vs a funnel) changes.
+  // Retries transient failures and only commits a VALID stats object, so a
+  // cold-start 500 self-heals instead of sticking on an empty/undefined view.
   useEffect(() => {
-    setStatsLoading(true);
+    let cancelled = false;
     const url = selectedFunnelId === 'all' ? '/api/stats' : `/api/stats?funnel_id=${selectedFunnelId}`;
-    fetch(url)
-      .then(r => r.json())
-      .then(s => setStats(s))
-      .catch(() => {})
-      .finally(() => { setLoading(false); setStatsLoading(false); });
+
+    const load = async () => {
+      setStatsLoading(true);
+      const data = await fetchJsonWithRetry(url);
+      if (!cancelled && data && typeof (data as DashboardStats).total === 'number') {
+        setStats(data as DashboardStats);
+      }
+      if (!cancelled) { setLoading(false); setStatsLoading(false); }
+    };
+
+    load();
+    return () => { cancelled = true; };
   }, [selectedFunnelId]);
 
   const selectedFunnel = funnels.find(f => String(f.id) === selectedFunnelId);
@@ -49,6 +76,12 @@ export default function DashboardPage() {
   }
 
   const s = (stats ?? {}) as DashboardStats;
+  // Distributions are % of their OWN population (companies that have that field),
+  // not of the global total — otherwise a "breakdown" can exceed 100%.
+  // NB: Postgres returns COUNT(*) as a string, so coerce with Number() — a bare
+  // `+` would concatenate ("0"+"1560") and zero out every percentage.
+  const classTotal = (s.classification_breakdown ?? []).reduce((sum, b) => sum + Number(b.count), 0);
+  const confTotal  = (s.confidence_breakdown ?? []).reduce((sum, b) => sum + Number(b.count), 0);
 
   return (
     <div className="p-8 space-y-8">
@@ -93,7 +126,7 @@ export default function DashboardPage() {
         <StatCard label="M&A / Subsidiary" value={s.acquired_count} icon={<GitMerge className="w-4 h-4" />} color="purple" subtitle="Acquired, kept separate" />
         <StatCard label="Dead Domains" value={s.dead_domains} icon={<WifiOff className="w-4 h-4" />} color="red" />
         <StatCard label="False Negatives" value={s.false_negatives} icon={<Eye className="w-4 h-4" />} color="amber" subtitle="No → Manual Yes" />
-        <StatCard label="Scrape Success" value={`${s.scrape_success_rate}%`} icon={<Wifi className="w-4 h-4" />} color="blue" />
+        <StatCard label="Scrape Success" value={`${s.scrape_success_rate ?? 0}%`} icon={<Wifi className="w-4 h-4" />} color="blue" />
       </div>
 
       {/* Charts Row */}
@@ -107,7 +140,7 @@ export default function DashboardPage() {
             {s.classification_breakdown?.length > 0 ? (
               <div className="space-y-3">
                 {s.classification_breakdown.map((item) => {
-                  const pct = s.total > 0 ? Math.round((item.count / s.total) * 100) : 0;
+                  const pct = classTotal > 0 ? Math.round((item.count / classTotal) * 100) : 0;
                   const color = item.company_classification === 'DevTool' ? 'bg-emerald-500' 
                     : item.company_classification === 'IT Services & Solutions' ? 'bg-amber-500'
                     : 'bg-slate-400';
@@ -139,7 +172,7 @@ export default function DashboardPage() {
             {s.confidence_breakdown?.length > 0 ? (
               <div className="space-y-3">
                 {s.confidence_breakdown.map((item) => {
-                  const pct = s.icp_yes > 0 ? Math.round((item.count / s.icp_yes) * 100) : 0;
+                  const pct = confTotal > 0 ? Math.round((item.count / confTotal) * 100) : 0;
                   const color = item.confidence === 'High' ? 'bg-emerald-500'
                     : item.confidence === 'Medium' ? 'bg-amber-500' : 'bg-red-500';
                   return (

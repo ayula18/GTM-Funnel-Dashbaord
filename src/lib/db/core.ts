@@ -32,15 +32,38 @@ export function pool(): Pool {
 /** A database row. Callers may pass a concrete shape: `qp<{ id: number }>(...)`. */
 export type DbRow = Record<string, unknown>;
 
+// Transient connection failures that a retry resolves. On serverless (Vercel),
+// the FIRST query after a cold start / fresh deploy can hit a dropped or
+// half-open pooler connection — node-postgres discards the bad client, so the
+// retry simply gets a fresh one. Without this, that first request 500s and the
+// dashboard shows empty until a manual refresh.
+const TRANSIENT_DB_ERROR =
+  /ECONNRESET|ETIMEDOUT|EPIPE|ENOTFOUND|Connection terminated|terminating connection|connection timeout|timeout exceeded|server closed the connection|Client has encountered a connection error|connection is closed/i;
+
+async function runQuery(text: string, values: unknown[]) {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await pool().query(text, values);
+    } catch (err) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!TRANSIENT_DB_ERROR.test(msg)) throw err;        // real error — don't mask it
+      await new Promise(r => setTimeout(r, 150 * (attempt + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 export async function qp<T = DbRow>(query: string, values: unknown[] = []): Promise<T[]> {
-  const result = await pool().query(query, values);
+  const result = await runQuery(query, values);
   return result.rows as T[];
 }
 
 export async function qdb<T = DbRow>(query: string, values: unknown[] = []): Promise<T[]> {
   let n = 0;
   const numbered = query.replace(/\?/g, () => `$${++n}`);
-  const result = await pool().query(numbered, values);
+  const result = await runQuery(numbered, values);
   return result.rows as T[];
 }
 
