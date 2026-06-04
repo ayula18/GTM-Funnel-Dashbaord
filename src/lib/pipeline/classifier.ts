@@ -2,7 +2,9 @@ import OpenAI from 'openai';
 import { ExtractedSignals, ClassificationResult, CATEGORIES } from '../types';
 
 export async function classifyCompany(signals: ExtractedSignals, apiKey: string): Promise<ClassificationResult> {
-  const openai = new OpenAI({ apiKey });
+  // Bounded timeout + retries so a hung OpenAI call can never stall a batch
+  // (the SDK default is ~10 min × 2 retries — that blocks Stop for minutes).
+  const openai = new OpenAI({ apiKey, timeout: 30_000, maxRetries: 1 });
 
   const systemPrompt = `You are a GTM analyst at Reo.Dev. Classify companies using their website data.
 
@@ -242,11 +244,23 @@ Scrape Status: ${signals.scrape_status}`;
     response_format: { type: 'json_object' }
   });
 
-  const content = response.choices[0].message.content || '{}';
-  const parsed = JSON.parse(content) as ClassificationResult;
-  
+  const content = response.choices?.[0]?.message?.content || '{}';
+  let parsed: ClassificationResult;
+  try {
+    parsed = JSON.parse(content) as ClassificationResult;
+  } catch {
+    // Malformed JSON from the model — treat as "couldn't classify" (Review),
+    // never crash the batch.
+    return {
+      domain: signals.domain,
+      is_icp: 'Review',
+      company_classification: 'Not Relevant',
+      reason: 'Model returned malformed output — needs manual review.',
+    } as ClassificationResult;
+  }
+
   // ensure we have the domain
   if (!parsed.domain) parsed.domain = signals.domain;
-  
+
   return parsed;
 }

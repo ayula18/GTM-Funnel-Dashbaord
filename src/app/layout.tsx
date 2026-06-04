@@ -4,6 +4,7 @@ import './globals.css';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
 import { Sidebar } from '@/components/sidebar';
+import { ChatWidget } from '@/components/chat-widget';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -25,6 +26,7 @@ export default function RootLayout({
           <main className="flex-1 flex flex-col min-w-0 ml-[260px] min-h-screen">
             {children}
           </main>
+          <ChatWidget />
           <Toaster />
         </TooltipProvider>
       </body>

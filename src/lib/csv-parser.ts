@@ -16,8 +16,10 @@ import {
   recordFieldChanges,
   finalizeUploadBatch,
   deleteUploadBatch,
+  ensureMatchDecisionsTable,
+  recordMatchDecisions,
 } from './db';
-import type { BatchChangeRow, UpsertResult } from './db';
+import type { BatchChangeRow, UpsertResult, MatchDecisionRow } from './db';
 import { MAPPABLE_FIELD_SET } from './source-policy';
 import { CsvSourceType, UploadResult } from './types';
 
@@ -139,6 +141,9 @@ export async function parseAndImportCsv(
   });
   result.batch_id = batchId;
 
+  // Ensure match_decisions table exists (idempotent)
+  await ensureMatchDecisionsTable();
+
   const seenDomains = new Set<string>();
 
   const dataRows = rows.slice(1);
@@ -154,6 +159,7 @@ export async function parseAndImportCsv(
 
   for (const chunk of chunks) {
     const pending: BatchChangeRow[] = [];
+    const pendingDecisions: MatchDecisionRow[] = [];
 
     await Promise.all(chunk.map(async (row) => {
       if (!row || row.length < 1) return;
@@ -245,6 +251,15 @@ export async function parseAndImportCsv(
         if (smartMatch && smartMatch.confidence === 'exact') {
           companyData.domain = smartMatch.domain;
           up = await upsertCompanyTracked(companyData, upsertOpts);
+
+          // Log: auto-enriched via exact match
+          pendingDecisions.push({
+            batch_id: batchId, input_domain: domain,
+            matched_domain: smartMatch.domain, company_id: up.id,
+            match_method: smartMatch.matchType,
+            match_detail: domain === smartMatch.domain ? null : `${domain} → ${smartMatch.domain}`,
+            confidence: 'exact',
+          });
         } else if (smartMatch) {
           up = await upsertCompanyTracked(companyData, upsertOpts);
           await createMergeCandidate(
@@ -255,8 +270,26 @@ export async function parseAndImportCsv(
             smartMatch.confidence,
           );
           result.domain_conflicts++;
+
+          // Log: created separate + merge candidate
+          pendingDecisions.push({
+            batch_id: batchId, input_domain: domain,
+            matched_domain: smartMatch.domain, company_id: up.id,
+            match_method: 'merge_candidate',
+            match_detail: `${domain} ↔ ${smartMatch.domain} via ${smartMatch.matchType}`,
+            confidence: smartMatch.confidence,
+          });
         } else {
           up = await upsertCompanyTracked(companyData, upsertOpts);
+
+          // Log: new company, no match found
+          pendingDecisions.push({
+            batch_id: batchId, input_domain: domain,
+            matched_domain: null, company_id: up.id,
+            match_method: 'new_insert',
+            match_detail: null,
+            confidence: 'none',
+          });
         }
 
         const companyId = up.id;
@@ -292,6 +325,7 @@ export async function parseAndImportCsv(
     }));
 
     await recordFieldChanges(batchId, pending);
+    await recordMatchDecisions(pendingDecisions);
 
     processedRows += chunk.length;
     onProgress?.(processedRows, totalRows);

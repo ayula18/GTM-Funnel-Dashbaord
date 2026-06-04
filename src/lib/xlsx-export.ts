@@ -11,7 +11,7 @@ type Row = Record<string, unknown>;
 
 const LABELS: Record<string, string> = {
   domain: 'Domain', company_name: 'Company Name', company_country: 'Country',
-  website: 'Website', company_linkedin_url: 'LinkedIn URL',
+  website: 'Website', company_linkedin_url: 'LinkedIn (Apollo)',
   apollo_employees: 'Employees (Apollo)', employee_reo: 'Employees (Reo)',
   total_funding: 'Total Funding (Apollo)', crunchbase_funding: 'Funding (Crunchbase)',
   crunchbase_funding_type: 'Funding Type (CB)', annual_revenue: 'Annual Revenue',
@@ -77,6 +77,7 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
   addSheet('Main View', [
     'domain', 'company_name', 'company_country', 'apollo_employees', 'employee_reo',
     'total_funding', 'crunchbase_funding', 'annual_revenue', 'revenue_reo', 'founded_year',
+    'company_linkedin_url',
     'icp_decision', 'company_classification', 'category', 'confidence', 'is_netnew', 'subsidiary_of',
   ], companies);
 

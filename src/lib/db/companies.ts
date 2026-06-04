@@ -453,7 +453,74 @@ export async function getUnclassifiedCompanies(funnelId: number, limit: number =
   return qp(`
     SELECT c.* FROM companies c
     JOIN funnel_companies fc ON c.id = fc.company_id
-    WHERE fc.funnel_id = $1 AND c.classified_at IS NULL
+    WHERE fc.funnel_id = $1 AND c.classified_at IS NULL AND c.merged_into_id IS NULL
     ORDER BY c.id LIMIT $2
   `, [funnelId, limit]);
+}
+
+/**
+ * Mark a company as ATTEMPTED-but-failed so the pipeline never re-fetches it in
+ * an infinite loop. Sets classified_at (removing it from the unclassified queue)
+ * and flags it for manual review. Touches ONLY columns guaranteed to exist, so
+ * this never fails even if the original update failed on a missing column.
+ */
+export async function markClassificationFailed(id: number, reason: string) {
+  await qp(
+    `UPDATE companies
+        SET classified_at         = NOW(),
+            scrape_status         = COALESCE(scrape_status, 'error'),
+            icp_decision          = COALESCE(icp_decision, 'Review'),
+            needs_manual_review   = 1,
+            classification_reason = $2,
+            updated_at            = NOW()
+      WHERE id = $1`,
+    [id, `Pipeline error: ${reason}`.slice(0, 500)],
+  );
+}
+
+/**
+ * Reset companies whose classification failed (reason starts with
+ * "Pipeline error:") so they re-enter the unclassified queue.
+ * Also clears their scrape cache for a fresh attempt.
+ * Returns the count of companies reset.
+ */
+export async function resetFailedClassifications(funnelId: number): Promise<number> {
+  // Find all failed companies in this funnel
+  const failed = await qp(`
+    SELECT c.id, c.domain FROM companies c
+    JOIN funnel_companies fc ON c.id = fc.company_id
+    WHERE fc.funnel_id = $1
+      AND c.classification_reason LIKE 'Pipeline error:%'
+      AND c.merged_into_id IS NULL
+  `, [funnelId]);
+
+  if (failed.length === 0) return 0;
+
+  const ids = failed.map(r => r.id as number);
+  const domains = failed.map(r => r.domain as string);
+
+  // Reset classification fields so they re-enter the unclassified queue
+  await qp(`
+    UPDATE companies
+       SET classified_at         = NULL,
+           icp_decision          = NULL,
+           scrape_status         = NULL,
+           classification_reason = NULL,
+           needs_manual_review   = 0,
+           company_classification = NULL,
+           category              = NULL,
+           sub_category          = NULL,
+           company_type          = NULL,
+           confidence            = NULL,
+           observations          = NULL,
+           updated_at            = NOW()
+     WHERE id = ANY($1::int[])
+  `, [ids]);
+
+  // Clear scrape cache so they get fresh scrapes
+  if (domains.length > 0) {
+    await qp(`DELETE FROM scrape_cache WHERE domain = ANY($1::text[])`, [domains]);
+  }
+
+  return failed.length;
 }

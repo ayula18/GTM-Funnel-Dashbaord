@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS companies (
   apollo_employees      INTEGER,
   employee_reo          INTEGER,
   website               TEXT,
-  company_linkedin_url  TEXT,
+  company_linkedin_url  TEXT,   -- Apollo's LinkedIn URL
+  scraped_linkedin_url  TEXT,   -- LinkedIn URL found while scraping the homepage (classification pipeline)
   company_country       TEXT,
   total_funding         DOUBLE PRECISION,
   latest_funding        TEXT,

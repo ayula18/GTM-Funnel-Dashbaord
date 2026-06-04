@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server';
 import { errorMessage } from '@/lib/utils';
-import { runPipeline } from '@/lib/pipeline/runner';
-import { getFunnel } from '@/lib/db';
+import { processClassificationBatch } from '@/lib/pipeline/runner';
+import { getFunnel, updateFunnelClassification } from '@/lib/db';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // each call processes a ~45s slice, then returns
+
+/**
+ * Client-driven classification. Each POST processes a time-boxed slice of the
+ * funnel's unclassified companies and returns progress; the client re-invokes
+ * until `done`. No long-lived background task (so it survives serverless), Stop
+ * is instant, and a refresh can resume because progress lives in the DB.
+ */
 export async function POST(request: Request) {
   try {
     const { funnel_id } = await request.json();
@@ -10,13 +20,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'funnel_id required' }, { status: 400 });
     }
 
-    const funnel = await getFunnel(funnel_id);
-    if (!funnel) {
-      return NextResponse.json({ error: 'Funnel not found' }, { status: 404 });
-    }
-
-    // API key comes from the environment (set OPENAI_API_KEY locally in
-    // .env.local and in the Vercel project's environment variables).
     const apiKey = process.env.OPENAI_API_KEY || '';
     if (!apiKey) {
       return NextResponse.json(
@@ -25,27 +28,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const unclassifiedCount = funnel.unclassified as number;
-    if (unclassifiedCount === 0) {
-      return NextResponse.json({ message: 'No unclassified companies left in this funnel.' }, { status: 200 });
+    const funnel = await getFunnel(funnel_id);
+    if (!funnel) {
+      return NextResponse.json({ error: 'Funnel not found' }, { status: 404 });
     }
 
-    // Start pipeline in background
-    // We consume the generator but do not block the request
-    (async () => {
-      try {
-        // Drain the generator (it updates the DB internally) without binding.
-        const generator = runPipeline(funnel_id, apiKey, unclassifiedCount);
-        for (let next = await generator.next(); !next.done; next = await generator.next()) {
-          // side effects only
-        }
-      } catch (e) {
-        console.error('Pipeline background error:', e);
+    // Fresh run (not already running): initialise progress = unclassified count.
+    if (funnel.classification_status !== 'running') {
+      const total = Number(funnel.unclassified) || 0;
+      if (total === 0) {
+        await updateFunnelClassification(funnel_id, 'idle', 0, 0, '');
+        return NextResponse.json({ done: true, stopped: false, completed: 0, total: 0, processedThisCall: 0, errors: [] });
       }
-    })();
+      await updateFunnelClassification(funnel_id, 'running', 0, total, '');
+    }
 
-    return NextResponse.json({ success: true, message: 'Classification started' });
-
+    const result = await processClassificationBatch(funnel_id, apiKey);
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }

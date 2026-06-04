@@ -352,6 +352,8 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                 {['main', 'apollo', 'employees'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.apollo_employees">Emp (Apollo)</SortHeader></TableHead>}
                 {['main', 'apollo', 'funding'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.total_funding">Funding (Apollo)</SortHeader></TableHead>}
                 {['main', 'funding'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.crunchbase_funding">Funding (CB)</SortHeader></TableHead>}
+
+                {['main'].includes(viewMode) && <TableHead>LinkedIn (Apollo)</TableHead>}
                 {['main', 'icp'].includes(viewMode) && <TableHead className="max-w-[200px]">Reason</TableHead>}
                 {['main', 'employees', 'icp', 'funding'].includes(viewMode) && <TableHead className="text-center">NetNew</TableHead>}
                 {['main', 'review'].includes(viewMode) && <TableHead className="max-w-[200px]">Notes</TableHead>}
@@ -372,7 +374,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                 ))
               ) : data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={showDiscardColumn ? 16 : 15} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={showDiscardColumn ? 18 : 17} className="h-32 text-center text-muted-foreground">
                     No companies found matching the current filters.
                   </TableCell>
                 </TableRow>
@@ -487,6 +489,16 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>
                         )}
+                      </TableCell>
+                    )}
+
+                    {['main'].includes(viewMode) && (
+                      <TableCell>
+                        {row.company_linkedin_url ? (
+                          <a href={row.company_linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1 text-xs">
+                            View <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : <span className="text-muted-foreground text-xs">—</span>}
                       </TableCell>
                     )}
                     {['main', 'icp'].includes(viewMode) && (

@@ -6,7 +6,8 @@ import {
 } from '@/lib/db/comments';
 import { upsertCompanyTracked, linkCompanyToFunnel } from '@/lib/db/companies';
 import { findCompanyByDomainSmart } from '@/lib/db/merges';
-import { runPipeline } from '@/lib/pipeline/runner';
+import { processClassificationBatch } from '@/lib/pipeline/runner';
+import { updateFunnelClassification } from '@/lib/db/funnels';
 import { qp } from '@/lib/db/core';
 
 /**
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
 
     // 2. Find or create a funnel for this campaign's comment intel
     const funnelName = `Comment Intel: ${campaign_tag}`;
-    let funnelRows = await qp<{ id: number }>(`SELECT id FROM funnels WHERE name = $1`, [funnelName]);
+    const funnelRows = await qp<{ id: number }>(`SELECT id FROM funnels WHERE name = $1`, [funnelName]);
     let funnelId: number;
 
     if (funnelRows.length === 0) {
@@ -78,7 +79,9 @@ export async function POST(request: Request) {
           domain: d.domain,
           company_name: d.companyName || null,
         };
-        const result = await upsertCompanyTracked(companyData, { source: 'comment_intel' as any });
+        // Domain-only inserts from Comment Intel — treat as raw domains (owns no
+        // enrichment columns, so identity fields like company_name fill cleanly).
+        const result = await upsertCompanyTracked(companyData, { source: 'raw_domains' });
         companyId = result.id;
         insertedCount++;
       }
@@ -103,12 +106,16 @@ export async function POST(request: Request) {
     const unclassifiedCount = parseInt(String(funnelRow[0]?.unclassified || '0'));
 
     if (unclassifiedCount > 0) {
-      // Start pipeline in background (same pattern as /api/classify)
+      // Run the classification in the background, using the same time-boxed,
+      // attempt-marking batch processor as the GTM pipeline (so it can't loop
+      // forever on a failure). Note: like any background task this is best-effort
+      // on serverless; the Comment Intel page can re-trigger if interrupted.
       (async () => {
         try {
-          const generator = runPipeline(funnelId, apiKey, unclassifiedCount);
-          for (let next = await generator.next(); !next.done; next = await generator.next()) {
-            // side effects only — updates companies table
+          await updateFunnelClassification(funnelId, 'running', 0, unclassifiedCount, '');
+          let result = await processClassificationBatch(funnelId, apiKey);
+          while (!result.done) {
+            result = await processClassificationBatch(funnelId, apiKey);
           }
 
           // After pipeline completes, sync ICP status back to linkedin_profiles

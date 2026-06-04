@@ -199,3 +199,109 @@ export async function getBatchFunnelId(batchId: number): Promise<number | null> 
   const rows = await qp('SELECT funnel_id FROM upload_batches WHERE id = $1', [batchId]);
   return rows[0] ? (rows[0].funnel_id as number) : null;
 }
+
+// ── Match Decision Log ───────────────────────────────────────────────────────
+//
+// Every row processed during a CSV import records HOW it was matched (or that
+// it was a new insert). This gives full visibility into the 5% of non-trivial
+// matches without changing any matching behaviour.
+
+export async function ensureMatchDecisionsTable() {
+  await qp(`
+    CREATE TABLE IF NOT EXISTS match_decisions (
+      id              SERIAL PRIMARY KEY,
+      batch_id        INTEGER REFERENCES upload_batches(id) ON DELETE CASCADE,
+      input_domain    TEXT NOT NULL,
+      matched_domain  TEXT,
+      company_id      INTEGER,
+      match_method    TEXT NOT NULL,
+      match_detail    TEXT,
+      confidence      TEXT,
+      created_at      TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await qp(`CREATE INDEX IF NOT EXISTS idx_md_batch ON match_decisions(batch_id)`);
+  await qp(`CREATE INDEX IF NOT EXISTS idx_md_method ON match_decisions(match_method)`);
+}
+
+export interface MatchDecisionRow {
+  batch_id: number;
+  input_domain: string;
+  matched_domain: string | null;
+  company_id: number;
+  match_method: string;
+  match_detail: string | null;
+  confidence: string;
+}
+
+/** Bulk-insert match decisions for one chunk of an import. */
+export async function recordMatchDecisions(decisions: MatchDecisionRow[]) {
+  if (decisions.length === 0) return;
+
+  const values: unknown[] = [];
+  const tuples: string[] = [];
+  decisions.forEach((d, i) => {
+    const b = i * 7;
+    tuples.push(`($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}, $${b + 5}, $${b + 6}, $${b + 7})`);
+    values.push(d.batch_id, d.input_domain, d.matched_domain, d.company_id, d.match_method, d.match_detail, d.confidence);
+  });
+
+  await qp(
+    `INSERT INTO match_decisions (batch_id, input_domain, matched_domain, company_id, match_method, match_detail, confidence)
+     VALUES ${tuples.join(', ')}`,
+    values,
+  );
+}
+
+export interface MatchDecisionView {
+  id: number;
+  input_domain: string;
+  matched_domain: string | null;
+  company_id: number;
+  match_method: string;
+  match_detail: string | null;
+  confidence: string;
+  created_at: string;
+  company_name: string | null;
+}
+
+/** Get all match decisions for a batch, joined with company name. */
+export async function getMatchDecisions(
+  batchId: number,
+  filters?: { method?: string; search?: string },
+): Promise<MatchDecisionView[]> {
+  let where = 'WHERE md.batch_id = $1';
+  const params: unknown[] = [batchId];
+  let paramIdx = 2;
+
+  if (filters?.method && filters.method !== 'all') {
+    where += ` AND md.match_method = $${paramIdx}`;
+    params.push(filters.method);
+    paramIdx++;
+  }
+
+  if (filters?.search) {
+    where += ` AND (md.input_domain ILIKE $${paramIdx} OR md.matched_domain ILIKE $${paramIdx} OR c.company_name ILIKE $${paramIdx})`;
+    params.push(`%${filters.search}%`);
+    paramIdx++;
+  }
+
+  return qp<MatchDecisionView>(
+    `SELECT md.*, c.company_name
+     FROM match_decisions md
+     LEFT JOIN companies c ON c.id = md.company_id
+     ${where}
+     ORDER BY md.id`,
+    params,
+  );
+}
+
+/** Summary counts per match method for a batch. */
+export async function getMatchDecisionSummary(batchId: number): Promise<Array<{ method: string; count: number }>> {
+  return qp(
+    `SELECT match_method AS method, COUNT(*) AS count
+     FROM match_decisions WHERE batch_id = $1
+     GROUP BY match_method ORDER BY count DESC`,
+    [batchId],
+  );
+}

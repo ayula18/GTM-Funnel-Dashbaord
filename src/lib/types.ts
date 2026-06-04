@@ -14,7 +14,7 @@ export interface Company {
   apollo_employees: number | null;
   employee_reo: number | null;
   website: string | null;
-  company_linkedin_url: string | null;
+  company_linkedin_url: string | null;   // Apollo's LinkedIn
   company_country: string | null;
   total_funding: number | null;
   latest_funding: string | null;

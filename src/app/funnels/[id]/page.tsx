@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, use } from 'react';
+import { useState, useEffect, useCallback, useRef, use } from 'react';
 import { FunnelBar } from '@/components/funnel-bar';
 import { DataTable } from '@/components/data-table';
 import { PipelineProgress } from '@/components/pipeline-progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Download, ListChecks, AlertTriangle, XCircle, Upload, GitMerge, History, FileSpreadsheet, CloudUpload } from 'lucide-react';
+import { Play, Download, ListChecks, AlertTriangle, XCircle, Upload, GitMerge, History, FileSpreadsheet, CloudUpload, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatNumber, errorMessage } from '@/lib/utils';
 import type { FunnelWithStats, FunnelSteps } from '@/lib/types';
@@ -51,6 +51,11 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
     errors: []
   });
 
+  // Drive-loop control: stopRef short-circuits the loop; drivingRef prevents
+  // two loops running at once (e.g. button click + auto-resume).
+  const stopRef = useRef(false);
+  const drivingRef = useRef(false);
+
   const fetchFunnel = useCallback(() => {
     fetch(`/api/funnels/${funnelId}`)
       .then(res => res.json())
@@ -68,6 +73,50 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
         setLoading(false);
       });
   }, [funnelId]);
+
+  // Drive the classification loop: repeatedly ask the server to process a
+  // time-boxed slice until it reports done. No long-lived background task to
+  // orphan on serverless, Stop is instant, and progress comes straight from
+  // each response.
+  const drive = useCallback(async () => {
+    if (drivingRef.current) return;
+    drivingRef.current = true;
+    stopRef.current = false;
+    setPipelineState(prev => ({ ...prev, status: 'running' }));
+
+    try {
+      while (!stopRef.current) {
+        const res = await fetch('/api/classify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ funnel_id: funnelId }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          toast.error('Classification error', { description: data.error });
+          setPipelineState(prev => ({ ...prev, status: 'error' }));
+          break;
+        }
+        setPipelineState(prev => ({
+          status: data.done ? 'idle' : 'running',
+          completed: data.completed ?? prev.completed,
+          total: data.total ?? prev.total,
+          currentDomain: '',
+          errors: [...prev.errors, ...(data.errors || [])].slice(-50),
+        }));
+        if (data.done) {
+          if (!data.stopped) toast.success('Classification complete');
+          break;
+        }
+      }
+    } catch (error) {
+      toast.error('Pipeline error', { description: errorMessage(error) });
+      setPipelineState(prev => ({ ...prev, status: 'error' }));
+    } finally {
+      drivingRef.current = false;
+      fetchFunnel();
+    }
+  }, [funnelId, fetchFunnel]);
 
   useEffect(() => {
     fetchFunnel();
@@ -87,31 +136,14 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
     return () => { cancelled = true; };
   }, []);
 
+  // Auto-resume: if the funnel is already 'running' on load (e.g. the tab was
+  // refreshed mid-run), pick the loop back up automatically.
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (pipelineState.status === 'running' || pipelineState.status === 'stopping') {
-      interval = setInterval(() => {
-        fetch(`/api/funnels/${funnelId}?t=${Date.now()}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.classification_status) {
-              setPipelineState({
-                status: data.classification_status,
-                completed: data.classification_completed || 0,
-                total: data.classification_total || 0,
-                currentDomain: data.classification_current_domain || '',
-                errors: []
-              });
-              if (data.classification_status === 'idle' || data.classification_status === 'completed') {
-                clearInterval(interval);
-                fetchFunnel();
-              }
-            }
-          });
-      }, 2000);
+    if (funnel?.classification_status === 'running' && !drivingRef.current) {
+      drive();
     }
-    return () => clearInterval(interval);
-  }, [pipelineState.status, funnelId, fetchFunnel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [funnel?.classification_status]);
 
   // Build filter params based on active step. Uses the canonical funnel_step
   // gate (shared with the funnel-bar counts) so the rows match the step badge.
@@ -131,42 +163,47 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
 
   const combinedFilters = { ...getStepFilters(), ...getTabFilters() };
 
-  const runPipeline = async () => {
+  const runPipeline = () => {
+    setPipelineState(prev => ({ ...prev, errors: [] }));
+    toast.info('Classification started');
+    drive();
+  };
+
+  const resetFailed = async () => {
     try {
-      const res = await fetch('/api/classify', {
+      const res = await fetch('/api/classify/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ funnel_id: funnelId })
+        body: JSON.stringify({ funnel_id: funnelId }),
       });
-
-      if (!res.ok) {
-        const err = await res.json();
-        toast.error('Failed to start pipeline', { description: err.error });
-        return;
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Reset failed');
+      if (data.reset === 0) {
+        toast.info('No failed companies to reset.');
+      } else {
+        toast.success(`Reset ${data.reset} failed companies`, {
+          description: 'They are now queued for re-classification. Hit "Run Classification" to start.',
+        });
+        fetchFunnel();
       }
-
-      setPipelineState(prev => ({ ...prev, status: 'running', errors: [] }));
-      toast.info('Classification pipeline started in background');
     } catch (error) {
-      toast.error('Pipeline error', { description: errorMessage(error) });
-      setPipelineState(prev => ({ ...prev, status: 'error' }));
+      toast.error('Reset failed', { description: errorMessage(error) });
     }
   };
 
   const stopPipeline = async () => {
+    // Stop the client loop immediately, then tell the server to idle out so a
+    // refresh / other viewer also sees it stopped.
+    stopRef.current = true;
+    setPipelineState(prev => ({ ...prev, status: 'idle' }));
     try {
-      // Set to idle immediately so UI responds instantly
-      setPipelineState(prev => ({ ...prev, status: 'idle' }));
       await fetch('/api/classify/stop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ funnel_id: funnelId })
+        body: JSON.stringify({ funnel_id: funnelId }),
       });
-      toast.info('Classification stopped.');
-      fetchFunnel();
-    } catch {
-      toast.error('Failed to stop pipeline');
-    }
+    } catch { /* best-effort — the client loop already stopped */ }
+    toast.info('Classification stopped.');
   };
 
   const handleExport = () => {
@@ -282,6 +319,15 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
               </span>
             )}
           </div>
+          <Button
+            variant="outline"
+            onClick={resetFailed}
+            disabled={pipelineState.status === 'running'}
+            className="text-amber-600 border-amber-500/40 hover:bg-amber-500/10"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Re-run Failed
+          </Button>
           <Button 
             onClick={runPipeline}
             disabled={pipelineState.status === 'running' || pipelineState.status === 'stopping' || funnel.unclassified === 0}

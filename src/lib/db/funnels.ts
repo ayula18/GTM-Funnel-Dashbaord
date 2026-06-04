@@ -62,6 +62,15 @@ export async function updateFunnel(id: number, data: { name?: string; descriptio
   await qdb(`UPDATE funnels SET ${sets.join(', ')} WHERE id = ?`, values);
 }
 
+export async function deleteFunnel(id: number) {
+  // Delete associated records first to handle cases where ON DELETE CASCADE is not set
+  await qp('DELETE FROM funnel_companies WHERE funnel_id = $1', [id]);
+  // match_decisions has ON DELETE CASCADE from upload_batches, so deleting upload_batches is enough
+  await qp('DELETE FROM upload_batches WHERE funnel_id = $1', [id]);
+  // Finally, delete the funnel
+  await qp('DELETE FROM funnels WHERE id = $1', [id]);
+}
+
 export async function updateFunnelClassification(
   id: number,
   status: string,

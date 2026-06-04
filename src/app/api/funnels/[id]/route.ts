@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { errorMessage } from '@/lib/utils';
-import { getFunnel, getFunnelSteps, updateFunnel } from '@/lib/db';
+import { getFunnel, getFunnelSteps, updateFunnel, deleteFunnel } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,7 +41,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     const { id }   = await params;
     const funnelId = parseInt(id);
 
-    await updateFunnel(funnelId, { status: 'archived' });
+    await deleteFunnel(funnelId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
