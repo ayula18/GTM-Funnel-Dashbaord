@@ -68,6 +68,9 @@ export function extractSignals(domain: string, html: string): ExtractedSignals {
     oss_signals: extractOssSignals(full_text),
     cta_signals: extractCtaSignals(full_text),
     consulting_signals: extractConsultingSignals(full_text),
+    education_signals: extractEducationSignals(full_text),
+    recruitment_signals: extractRecruitmentSignals(full_text),
+    agency_signals: extractAgencySignals(full_text),
     observations: extractObservations(domain, full_text),
     scrape_status: 'success'
   };
@@ -95,6 +98,9 @@ function parseJinaText(domain: string, text: string): ExtractedSignals {
     oss_signals: extractOssSignals(full_text),
     cta_signals: extractCtaSignals(full_text),
     consulting_signals: extractConsultingSignals(full_text),
+    education_signals: extractEducationSignals(full_text),
+    recruitment_signals: extractRecruitmentSignals(full_text),
+    agency_signals: extractAgencySignals(full_text),
     observations: extractObservations(domain, full_text),
     scrape_status: 'success'
   };
@@ -154,6 +160,42 @@ function extractConsultingSignals(text: string): string {
   if (text.match(/custom software development|app development agency/)) signals.push('Agency');
   if (text.match(/managed services/)) signals.push('Managed Services');
   if (text.match(/outsourcing/)) signals.push('Outsourcing');
+  return signals.join(', ');
+}
+
+function extractEducationSignals(text: string): string {
+  const signals: string[] = [];
+  if (text.match(/\bcourse[s]?\b|\bcurriculum\b|\bsyllabus\b/)) signals.push('Courses');
+  if (text.match(/\bbootcamp[s]?\b|\bcoding bootcamp\b/)) signals.push('Bootcamp');
+  if (text.match(/\bcertification[s]?\b|\bcertified\b/)) signals.push('Certification');
+  if (text.match(/\bacademy\b|\binstitute\b|\bschool of\b/)) signals.push('Academy');
+  if (text.match(/\btraining\b|\bworkshop[s]?\b|\binstructor[s]?\b/)) signals.push('Training');
+  if (text.match(/\be-learning\b|\bonline learning\b|\blearn to code\b/)) signals.push('E-Learning');
+  if (text.match(/\btutorial[s]?\b|\blearn\b.*\bprogramming\b/)) signals.push('Tutorials');
+  if (text.match(/\benroll\b|\badmission[s]?\b|\bstudent[s]?\b/)) signals.push('Enrollment');
+  return signals.join(', ');
+}
+
+function extractRecruitmentSignals(text: string): string {
+  const signals: string[] = [];
+  if (text.match(/\brecruit\b|\brecruitment\b|\brecruiting\b|\brecruiter[s]?\b/)) signals.push('Recruitment');
+  if (text.match(/\bjob board\b|\bjob listing[s]?\b|\bcareer portal\b/)) signals.push('Job Board');
+  if (text.match(/\bhire developer[s]?\b|\bhire engineer[s]?\b|\bhiring platform\b/)) signals.push('Hire Developers');
+  if (text.match(/\btalent\b.*\b(matching|sourcing|marketplace|pool|acquisition)\b/)) signals.push('Talent Platform');
+  if (text.match(/\bstaffing\b|\bplacement[s]?\b|\bheadhunt\b/)) signals.push('Staffing');
+  if (text.match(/\bfreelance\b|\bfreelancer[s]?\b|\bcontract\b.*\b(developer|talent|hire)\b/)) signals.push('Freelance');
+  return signals.join(', ');
+}
+
+function extractAgencySignals(text: string): string {
+  const signals: string[] = [];
+  if (text.match(/\bwordpress\b.*\b(development|design|agency)\b|\bwordpress developer[s]?\b/)) signals.push('WordPress Dev');
+  if (text.match(/\bshopify\b.*\b(development|design|store|agency)\b/)) signals.push('Shopify Dev');
+  if (text.match(/\bweb design\b|\bwebsite design\b|\bui\/ux\b.*\bagency\b/)) signals.push('Web Design Agency');
+  if (text.match(/\bdigital agency\b|\bcreative agency\b|\bdesign agency\b/)) signals.push('Digital Agency');
+  if (text.match(/\bwebsite development\b|\bweb development\b.*\b(company|agency|services)\b/)) signals.push('Web Dev Agency');
+  if (text.match(/\bmobile app development\b.*\b(company|agency|services)\b/)) signals.push('App Dev Agency');
+  if (text.match(/\bseo\b.*\b(services|agency)\b|\bdigital marketing\b.*\bagency\b/)) signals.push('SEO/Marketing Agency');
   return signals.join(', ');
 }
 

@@ -71,11 +71,23 @@ DevTool:
 
 IT Services & Solutions:
   The company operates in the technology/developer ecosystem but sells
-  SERVICES, not a product. Consulting, managed services, staff augmentation,
-  system integration, cloud migration services, DevOps consulting, cybersecurity
-  consulting, IT outsourcing. Their customers are technical teams but the
-  company itself delivers human services, not software.
+  SERVICES (not a product) that are CONSUMED BY ENGINEERING TEAMS for
+  technical project delivery. Examples: IT outsourcing, managed infrastructure,
+  cloud migration, DevOps consulting, cybersecurity consulting, system
+  integration for technical systems.
   Examples: HCL, EPAM, Wipro, Accenture, TCS, Cognizant, Infosys, Rackspace.
+
+  THE BOUNDARY TEST — would an ENGINEERING TEAM at a tech company hire them
+  to help BUILD, SHIP, RUN, or SECURE their technical systems? If yes → ICP.
+
+  NOT IT Services (these are "Not Relevant"):
+  • Recruitment/staffing/freelance platforms that FIND developers for hire
+    (the customer is HR/recruiting, not engineering)
+  • Basic website/app development agencies that build WordPress sites,
+    Shopify stores, or simple business websites for non-technical clients
+    (their customer is a business owner or product manager, not an
+    engineering team building production infrastructure)
+  • Digital marketing agencies, SEO agencies, creative/design agencies
 
   is_icp = "Yes". Always.
 
@@ -89,6 +101,9 @@ Not Relevant:
 
 HYBRID RULE: If a company sells BOTH a product AND services (Red Hat, SUSE,
 HashiCorp), classify as DevTool — the product is what matters.
+BUT: A minor internal tool, client portal, or proprietary accelerator does
+NOT make a services company a DevTool. Ask: would a random engineer discover
+and adopt this product independently? If no → IT Services or Not Relevant.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 WHEN SCRAPING FAILED (all data is N/A)
@@ -159,6 +174,39 @@ ANTI-ICP — ALWAYS "Not Relevant"
   Red Hat), virtualisation (VMware), container platforms, cloud platforms
   are used by infrastructure engineers — they ARE engineering function → ICP.
 
+• DEVELOPER EDUCATION & TRAINING:
+  Coding bootcamps, online course platforms, certification programs,
+  developer training companies, tech academies, tutorial sites,
+  e-learning platforms even if developer-focused (Pluralsight, Udemy,
+  Codecademy, A Cloud Guru, Linux Academy, Coursera tech courses).
+  The test: does this company sell a TOOL that engineers USE in their
+  daily technical work, or EDUCATION/TRAINING about tools?
+  Education about engineering ≠ engineering tool → Not Relevant.
+  EXCEPTION: Companies that sell both a product AND training (e.g.
+  HashiCorp has certifications but Terraform is the primary product) → DevTool.
+
+• TECH RECRUITMENT & STAFFING PLATFORMS:
+  Companies whose primary business is FINDING/HIRING/MATCHING developers
+  or tech talent. Job boards, freelance marketplaces, talent matching
+  platforms, recruitment agencies, staffing firms focused on placing
+  developers/engineers at other companies.
+  Examples: Toptal, Worky, Hired, Turing, AngelList Talent, Andela (talent).
+  The customer is HR/recruiting teams, not engineering teams.
+  → Not Relevant.
+  IMPORTANT: Do NOT confuse this with IT outsourcing/body-shopping companies
+  that PROVIDE engineering teams to deliver technical projects (Wipro, TCS).
+  Those deliver engineering services → IT Services & Solutions → ICP.
+
+• BASIC WEB/APP DEVELOPMENT AGENCIES:
+  Companies that build WordPress sites, Shopify stores, Squarespace sites,
+  simple business websites, or basic mobile apps FOR non-technical clients.
+  Their customer is typically a business owner, product manager, or marketing
+  team — not an engineering team building production infrastructure.
+  Digital agencies, creative agencies, SEO agencies, web design studios.
+  → Not Relevant.
+  IMPORTANT: Do NOT confuse with enterprise system integrators (Accenture,
+  EPAM) or cloud consultancies that serve engineering teams → IT Services.
+
 NON-PROFIT/FOUNDATION CHECK:
 Pure foundations (Linux Foundation, Apache Foundation, CNCF) with no
 commercial product = Not Relevant. However, companies that sell a commercial
@@ -207,7 +255,22 @@ HARD RULES:
 - company_classification = "Not Relevant" → is_icp = "No". Always.
 - Genuinely cannot determine → is_icp = "Review".
 - NEVER say "No" because scraping failed. Use "Review".
-- If end users BUILD, SHIP, RUN, OBSERVE, or SECURE technical systems → ICP Yes. No exceptions.`;
+- If end users BUILD, SHIP, RUN, OBSERVE, or SECURE technical systems → ICP Yes. No exceptions.
+
+SELF-CONSISTENCY CHECK (do this BEFORE outputting):
+Re-read your "reason" field. Does your reason describe the company as
+"Not Relevant" or say the end users are not in engineering? Then your
+company_classification MUST be "Not Relevant" and is_icp MUST be "No".
+Does your reason describe a devtool or engineering service? Then is_icp
+MUST be "Yes". Your classification and reason must NEVER contradict.
+
+CONFIDENCE CALIBRATION:
+- High: Scraped data is clear and sufficient. You are 95%+ certain.
+- Medium: Some ambiguity — mixed signals, partial scrape, or borderline case.
+- Low: Scrape failed/thin AND relying on domain name or training knowledge.
+  OR the company genuinely sits on a classification boundary.
+When scrape_status ≠ "success", confidence should almost never be "High".
+Borderline cases should be "Medium" or "Low", not "High" with a guess.`;
 
   const userPrompt = `Domain: ${signals.domain}
 Title: ${signals.title}
@@ -230,6 +293,9 @@ Distribution: ${signals.distribution_signals}
 OSS: ${signals.oss_signals}
 CTA: ${signals.cta_signals}
 Consulting: ${signals.consulting_signals}
+Education: ${signals.education_signals}
+Recruitment: ${signals.recruitment_signals}
+Agency: ${signals.agency_signals}
 Observations: ${signals.observations}
 Scrape Status: ${signals.scrape_status}`;
 

@@ -189,6 +189,9 @@ export interface ExtractedSignals {
   oss_signals: string;
   cta_signals: string;
   consulting_signals: string;
+  education_signals: string;
+  recruitment_signals: string;
+  agency_signals: string;
   observations: string;
   scrape_status: string;
 }

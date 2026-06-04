@@ -79,6 +79,31 @@ export function parseClassificationOutput(
 
   updateData.icp_decision = decision;
 
+  // ── Safety Net 1: Self-contradiction detection ────────────────────
+  // If the LLM wrote "Not Relevant" in the reason text but classified
+  // as DevTool or IT Services, the LLM contradicted itself. Override
+  // to Review so a human can resolve it.
+  const reasonText = (llmResult.reason || '').toLowerCase();
+  if (
+    decision === 'Yes' &&
+    (reasonText.includes('not relevant') || reasonText.includes('not in the engineering function') || reasonText.includes('not icp'))
+  ) {
+    decision = 'Review';
+    updateData.icp_decision = 'Review';
+    updateData.needs_manual_review = 1;
+    updateData.confidence = 'Low';
+    updateData.classification_reason =
+      `[AUTO-FLAGGED: reason contradicts classification] ${llmResult.reason}`;
+  }
+
+  // ── Safety Net 2: Low confidence + No = too risky ─────────────────
+  // We'd rather spend 30 seconds reviewing than lose a potential lead.
+  if (updateData.confidence === 'Low' && decision === 'No') {
+    decision = 'Review';
+    updateData.icp_decision = 'Review';
+    updateData.needs_manual_review = 1;
+  }
+
   // Set manual review flag
   if (decision === 'Review') {
     updateData.needs_manual_review = 1;
