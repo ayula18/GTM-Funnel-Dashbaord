@@ -572,7 +572,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pb-20 pt-2">
         <div className="text-xs text-muted-foreground">
           {data.length > 0 ? `${(page - 1) * perPage + 1}–${Math.min(page * perPage, totalCount)}` : '0'} of {formatNumber(totalCount)}
           {selectedIds.size > 0 && (
