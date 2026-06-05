@@ -35,7 +35,11 @@ async function classifyOne(company: Record<string, unknown>, apiKey: string): Pr
     if (scrape.status !== 'success') signals.scrape_status = scrape.status;
 
     const llmResult  = await classifyCompany(signals, apiKey);
-    const updateData = parseClassificationOutput(llmResult, signals);
+    // Pass the existing row so the parser can protect the upload-provided
+    // company_name (fill-empty only — never clobber it with an LLM sentinel).
+    const updateData = parseClassificationOutput(llmResult, signals, {
+      company_name: company.company_name as string | null,
+    });
     await updateCompany(id, updateData);
     return { domain };
   } catch (err) {

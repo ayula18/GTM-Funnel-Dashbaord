@@ -1,8 +1,33 @@
 import { ClassificationResult, ExtractedSignals } from '../types';
 
+// Values the LLM sometimes drops into the company_name field when it has no
+// real name for a dead/unknown domain — typically by echoing the DECISION
+// ("Review") or the classification ("Not Relevant") into the name slot. These
+// are NEVER valid company names and must never be written.
+const BOGUS_LLM_NAMES = new Set([
+  'review', 'yes', 'no', 'unknown', 'n/a', 'na', 'none', 'null', 'nil',
+  'not relevant', 'devtool', 'it services & solutions', 'it services',
+  'maybe', 'pending', 'tbd', 'tba', 'unnamed', 'company', 'undefined',
+]);
+
+/**
+ * Is the LLM-provided name a REAL company name we can store? Rejects the
+ * sentinel/decision values above, empty/too-short strings, and a name that's
+ * just the domain echoed back.
+ */
+function isUsableLlmName(name: string | null | undefined, domain: string): boolean {
+  if (!name) return false;
+  const n = name.trim().toLowerCase();
+  if (n.length < 2) return false;
+  if (BOGUS_LLM_NAMES.has(n)) return false;
+  if (n === domain.trim().toLowerCase()) return false;
+  return true;
+}
+
 export function parseClassificationOutput(
-  llmResult: ClassificationResult | null, 
-  signals: ExtractedSignals
+  llmResult: ClassificationResult | null,
+  signals: ExtractedSignals,
+  existing?: { company_name?: string | null },
 ): Record<string, unknown> {
   const updateData: Record<string, unknown> = {
     scrape_status: signals.scrape_status,
@@ -42,8 +67,14 @@ export function parseClassificationOutput(
     updateData.confidence = llmResult.confidence;
   }
   
-  if (llmResult.company_name) {
-    updateData.company_name = llmResult.company_name;
+  // company_name is the source of truth from the CSV upload. The classifier may
+  // only FILL it when it's currently empty, and only with a REAL name — it must
+  // never overwrite a user-provided name, and never write a sentinel value like
+  // "Review" (which is exactly how good names were getting clobbered).
+  const existingName = (existing?.company_name ?? '').trim();
+  const llmName      = (llmResult.company_name ?? '').trim();
+  if (!existingName && isUsableLlmName(llmName, signals.domain)) {
+    updateData.company_name = llmName;
   }
 
   if (llmResult.is_nonprofit !== undefined) {

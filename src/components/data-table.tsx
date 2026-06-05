@@ -516,9 +516,9 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                     {['main', 'employees', 'icp', 'funding'].includes(viewMode) && (
                       <TableCell className="text-center">
                         {row.is_netnew === 1 ? (
-                          <span className="text-emerald-600 font-bold text-sm">✓</span>
+                          <span className="text-blue-600 font-semibold text-sm">Yes</span>
                         ) : (
-                          <span className="text-muted-foreground/40">—</span>
+                          <span className="text-red-500 font-semibold text-sm">No</span>
                         )}
                       </TableCell>
                     )}

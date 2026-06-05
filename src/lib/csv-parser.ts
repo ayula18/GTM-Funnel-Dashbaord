@@ -3,6 +3,7 @@ import { normalizeDomain, extractRootName, isJunkName } from './domain-utils';
 import { detectCsvSource, COLUMN_MAP, normalizeHeader } from './csv-detect';
 export { detectCsvSource } from './csv-detect';
 import {
+  qp,
   upsertCompanyTracked,
   linkCompanyToFunnel,
   isInMasterIcp,
@@ -395,6 +396,18 @@ export async function parseMasterIcpCsv(csvContent: string): Promise<{ imported:
     } catch (err) {
       errors.push(`Row ${i + 1}: ${(err as Error).message}`);
     }
+  }
+
+  // Retroactively sync is_netnew for any existing companies that match the new master list
+  try {
+    await qp(`
+      UPDATE companies c
+      SET is_netnew = 0
+      FROM master_icp m
+      WHERE c.domain = m.domain AND c.is_netnew = 1
+    `);
+  } catch (err) {
+    errors.push(`Failed to sync is_netnew flags: ${(err as Error).message}`);
   }
 
   return { imported, errors };
