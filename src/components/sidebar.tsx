@@ -30,6 +30,7 @@ const sections: NavSection[] = [
     items: [
       { name: 'Dashboard', href: '/', icon: LayoutDashboard },
       { name: 'Funnels', href: '/funnels', icon: Filter },
+      { name: 'Categorization', href: '/categorization', icon: Target },
       { name: 'Upload', href: '/upload', icon: Upload },
       { name: 'Master List', href: '/master-list', icon: Database },
     ],

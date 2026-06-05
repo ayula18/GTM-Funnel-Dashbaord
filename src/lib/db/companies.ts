@@ -524,3 +524,41 @@ export async function resetFailedClassifications(funnelId: number): Promise<numb
 
   return failed.length;
 }
+
+export async function getCategorizationData(funnelId: number | null, netNewFilter: string = 'netnew') {
+  let query = `
+    SELECT c.id, c.company_name, c.domain, c.apollo_employees, c.employee_reo, 
+           c.total_funding, c.crunchbase_funding, c.annual_revenue, c.revenue_reo, 
+           c.company_classification, c.category, c.sub_category, c.sales_team_count,
+           c.website, c.company_linkedin_url, c.manual_gtm_bucket, c.manual_gtm_reason
+  `;
+  const values: unknown[] = [];
+
+  if (funnelId) {
+    query += `, (SELECT name FROM funnels WHERE id = $1) AS funnel_names
+      FROM companies c
+      JOIN funnel_companies fc ON fc.company_id = c.id WHERE fc.funnel_id = $1 AND `;
+    values.push(funnelId);
+  } else {
+    query += `, (SELECT STRING_AGG(f.name, ', ') 
+                 FROM funnel_companies fc2 
+                 JOIN funnels f ON f.id = fc2.funnel_id 
+                 WHERE fc2.company_id = c.id) AS funnel_names
+      FROM companies c
+      WHERE `;
+  }
+
+  query += `
+    c.icp_decision = 'Yes' 
+    AND c.discard_reason IS NULL 
+    AND (c.apollo_employees IS NOT NULL OR c.employee_reo IS NOT NULL OR c.total_funding IS NOT NULL OR c.annual_revenue IS NOT NULL OR c.crunchbase_funding IS NOT NULL OR c.revenue_reo IS NOT NULL)
+  `;
+
+  if (netNewFilter === 'netnew') {
+    query += ` AND c.is_netnew = 1`;
+  } else if (netNewFilter === 'not_netnew') {
+    query += ` AND (c.is_netnew = 0 OR c.is_netnew IS NULL)`;
+  }
+
+  return await qdb(query, values);
+}

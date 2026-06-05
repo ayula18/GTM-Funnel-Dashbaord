@@ -297,6 +297,13 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
           onChange={(min, max) => setRangeFilters(prev => ({ ...prev, funding: { min, max } }))}
           formatAs="currency"
         />
+        <RangeFilter
+          label="Revenue"
+          minValue={rangeFilters.revenue?.min || ''}
+          maxValue={rangeFilters.revenue?.max || ''}
+          onChange={(min, max) => setRangeFilters(prev => ({ ...prev, revenue: { min, max } }))}
+          formatAs="currency"
+        />
 
         <div className="h-6 w-px bg-border mx-1" />
 
@@ -351,7 +358,9 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                 {['main', 'employees'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.employee_reo">Emp (Reo)</SortHeader></TableHead>}
                 {['main', 'apollo', 'employees'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.apollo_employees">Emp (Apollo)</SortHeader></TableHead>}
                 {['main', 'apollo', 'funding'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.total_funding">Funding (Apollo)</SortHeader></TableHead>}
+                {['main', 'apollo', 'funding'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.annual_revenue">Revenue (Apollo)</SortHeader></TableHead>}
                 {['main', 'funding'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.crunchbase_funding">Funding (CB)</SortHeader></TableHead>}
+                {['main', 'funding'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.revenue_reo">Revenue (Reo)</SortHeader></TableHead>}
 
                 {['main'].includes(viewMode) && <TableHead>LinkedIn (Apollo)</TableHead>}
                 {['main', 'icp'].includes(viewMode) && <TableHead className="max-w-[200px]">Reason</TableHead>}
@@ -366,7 +375,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                 Array(8).fill(0).map((_, i) => (
                   <TableRow key={i} className="border-border">
                     {showSelection && <TableCell><div className="h-4 w-4 bg-muted animate-pulse rounded" /></TableCell>}
-                    {Array(showDiscardColumn ? 14 : 13).fill(0).map((_, j) => (
+                    {Array(showDiscardColumn ? 16 : 15).fill(0).map((_, j) => (
                       <TableCell key={j}><div className="h-4 w-16 bg-muted animate-pulse rounded" /></TableCell>
                     ))}
                     <TableCell></TableCell>
@@ -374,7 +383,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                 ))
               ) : data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={showDiscardColumn ? 18 : 17} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={showDiscardColumn ? 20 : 19} className="h-32 text-center text-muted-foreground">
                     No companies found matching the current filters.
                   </TableCell>
                 </TableRow>
@@ -482,10 +491,28 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                         )}
                       </TableCell>
                     )}
+                    {['main', 'apollo', 'funding'].includes(viewMode) && (
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {row.annual_revenue ? (
+                          <span className="text-violet-600 font-medium">{formatCurrency(row.annual_revenue)}</span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                    )}
                     {['main', 'funding'].includes(viewMode) && (
                       <TableCell className="text-right text-sm tabular-nums">
                         {row.crunchbase_funding ? (
                           <span className="text-blue-600 font-medium">{formatCurrency(row.crunchbase_funding)}</span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                    )}
+                    {['main', 'funding'].includes(viewMode) && (
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {row.revenue_reo ? (
+                          <span className="text-violet-600 font-medium">{formatCurrency(row.revenue_reo)}</span>
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>
                         )}

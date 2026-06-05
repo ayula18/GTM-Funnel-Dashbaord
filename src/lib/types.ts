@@ -32,6 +32,7 @@ export interface Company {
   crunchbase_funding: number | null;
   crunchbase_funding_type: string | null;
   revenue_reo: number | null;
+  sales_team_count: number | null;
 
   // ICP classification
   company_classification: string | null; // DevTool | IT Services & Solutions | Not Relevant
@@ -55,6 +56,8 @@ export interface Company {
   // Manual overrides
   manual_icp: string | null;
   manual_notes: string | null;
+  manual_gtm_bucket: string | null;
+  manual_gtm_reason: string | null;
   is_nonprofit: boolean;
 
   // Pipeline metadata
