@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { DataTable } from '@/components/data-table';
+import { MasterIcpTable } from '@/components/master-icp-table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,24 +22,16 @@ export default function MasterListPage() {
       });
   }, []);
 
-  const handleExport = () => {
-    window.open('/api/export?icp_decision=Yes', '_blank');
-  };
-
   return (
     <div className="p-8 space-y-8">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Master ICP List</h1>
-          <p className="text-muted-foreground mt-1">All qualified ICP companies across all funnels</p>
+          <h1 className="text-3xl font-bold tracking-tight">Master ICP Database</h1>
+          <p className="text-muted-foreground mt-1">Your company's pre-existing list of known customers or targets</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
           <Link href="/upload">
-            <Button variant="outline">
+            <Button>
               Upload Master List
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
@@ -60,21 +52,18 @@ export default function MasterListPage() {
             <div className="text-2xl font-bold tracking-tight">
               {loading ? '—' : formatNumber(masterCount)}
             </div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">Known ICP domains for NetNew checks</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">Domains used for NetNew checks</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Data Table — showing all ICP=Yes companies globally */}
+      {/* Data Table — showing the actual master_icp table */}
       <div>
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          All ICP Qualified Companies
-          <Badge variant="secondary" className="text-xs">Across all funnels</Badge>
+          Master Database
+          <Badge variant="secondary" className="text-xs">Excludes funnel pipeline data</Badge>
         </h2>
-        <DataTable 
-          filters={{ icp_decision: 'Yes' }}
-          showSelection
-        />
+        <MasterIcpTable />
       </div>
     </div>
   );

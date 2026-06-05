@@ -12,10 +12,12 @@ import {
   Wifi, WifiOff, Globe, TrendingDown, Eye, ArrowRight, GitMerge
 } from 'lucide-react';
 
-// Fetch JSON, retrying transient failures (a fresh Vercel deploy's first request
-// can 500 on a cold DB connection). Returns null only after all attempts fail,
-// and never returns an API error body — so the UI is never poisoned with `{error}`.
-async function fetchJsonWithRetry(url: string, attempts = 4): Promise<unknown | null> {
+// Fetch JSON, patiently retrying transient failures. A fresh Vercel deploy
+// cold-starts the function AND a new Supabase pooler connection, which can take
+// 10–30s to become reliably responsive — so we retry with exponential backoff
+// for ~25s total instead of giving up and showing an empty dashboard. Returns
+// null only after all attempts fail, and never returns an API `{error}` body.
+async function fetchJsonWithRetry(url: string, attempts = 8): Promise<unknown | null> {
   for (let i = 0; i < attempts; i++) {
     try {
       const res = await fetch(url, { cache: 'no-store' });
@@ -23,8 +25,10 @@ async function fetchJsonWithRetry(url: string, attempts = 4): Promise<unknown | 
         const data = await res.json();
         if (data && !(data as { error?: unknown }).error) return data;
       }
-    } catch { /* network/cold-start hiccup — retry */ }
-    await new Promise(r => setTimeout(r, 500 * (i + 1)));
+    } catch { /* network / cold-start hiccup — retry */ }
+    if (i < attempts - 1) {
+      await new Promise(r => setTimeout(r, Math.min(5000, 400 * 2 ** i)));
+    }
   }
   return null;
 }
@@ -35,42 +39,69 @@ export default function DashboardPage() {
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
-  // Funnel list — for the scope selector + the "Active Funnels" section. Once.
+  // Funnel list — for the scope selector + the "Active Funnels" section.
   useEffect(() => {
     let cancelled = false;
     fetchJsonWithRetry('/api/funnels').then(f => {
       if (!cancelled && Array.isArray(f)) setFunnels(f);
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadNonce]);
 
-  // Stats — refetched whenever the selected scope (global vs a funnel) changes.
-  // Retries transient failures and only commits a VALID stats object, so a
-  // cold-start 500 self-heals instead of sticking on an empty/undefined view.
+  // Stats — refetched on scope change or a manual retry. Patiently retries
+  // transient failures and only commits a VALID stats object, so a cold-start
+  // self-heals instead of sticking on an empty/undefined view.
   useEffect(() => {
     let cancelled = false;
     const url = selectedFunnelId === 'all' ? '/api/stats' : `/api/stats?funnel_id=${selectedFunnelId}`;
 
     const load = async () => {
       setStatsLoading(true);
+      setLoadError(false);
       const data = await fetchJsonWithRetry(url);
-      if (!cancelled && data && typeof (data as DashboardStats).total === 'number') {
+      if (cancelled) return;
+      if (data && typeof (data as DashboardStats).total === 'number') {
         setStats(data as DashboardStats);
+      } else {
+        setLoadError(true);   // exhausted retries — show an honest error, not empty data
       }
-      if (!cancelled) { setLoading(false); setStatsLoading(false); }
+      setLoading(false);
+      setStatsLoading(false);
     };
 
     load();
     return () => { cancelled = true; };
-  }, [selectedFunnelId]);
+  }, [selectedFunnelId, reloadNonce]);
 
   const selectedFunnel = funnels.find(f => String(f.id) === selectedFunnelId);
 
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-screen">
-        <div className="text-muted-foreground">Loading dashboard...</div>
+      <div className="p-8 flex flex-col items-center justify-center min-h-screen gap-2">
+        <div className="text-muted-foreground">Loading dashboard…</div>
+        <div className="text-xs text-muted-foreground/60">Waking up the database — this can take a few seconds right after a deploy.</div>
+      </div>
+    );
+  }
+
+  // Honest error state — only when we genuinely failed to load (never "No data
+  // yet" masquerading as a real empty result).
+  if (loadError && !stats) {
+    return (
+      <div className="p-8 flex flex-col items-center justify-center min-h-screen gap-3">
+        <div className="text-foreground font-medium">Couldn’t load the dashboard</div>
+        <div className="text-sm text-muted-foreground max-w-md text-center">
+          The database didn’t respond in time (common for a few seconds right after a new deployment). Your data is safe — just try again.
+        </div>
+        <button
+          onClick={() => { setLoading(true); setReloadNonce(n => n + 1); }}
+          className="mt-1 px-4 py-2 rounded-lg bg-primary text-white text-sm hover:bg-primary/90"
+        >
+          Retry
+        </button>
       </div>
     );
   }
