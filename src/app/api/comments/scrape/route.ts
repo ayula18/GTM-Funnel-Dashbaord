@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { ensureCommentTables, ingestScrape } from '@/lib/db';
 import { extractProfiles } from '@/lib/linkedin-scraper';

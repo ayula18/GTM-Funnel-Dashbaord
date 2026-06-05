@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { ensureCommentTables, getProfilesByCampaign, getCommentsByCampaign, getCampaignCommentStats } from '@/lib/db';
 

@@ -13,7 +13,7 @@ export function pool(): Pool {
   // caps at ~15). For Vercel/serverless use the TRANSACTION pooler (port 6543),
   // which releases each connection right after the statement so a small pool
   // scales across many function instances. Override per-env with PG_POOL_MAX.
-  const maxClients = parseInt(process.env.PG_POOL_MAX || '10', 10);
+  const maxClients = parseInt(process.env.PG_POOL_MAX || '2', 10);
   _pool = new Pool({
     host:     parsed.hostname,
     port:     parseInt(parsed.port || '5432'),
@@ -22,7 +22,7 @@ export function pool(): Pool {
     password: decodeURIComponent(parsed.password),
     ssl:      { rejectUnauthorized: false },
     max:      maxClients,
-    idleTimeoutMillis:       10000,
+    idleTimeoutMillis:       5000,
     // Fail a cold/stuck connect FAST (5s) so the retry loop can try again within
     // the function's time budget instead of one attempt eating 10s.
     connectionTimeoutMillis: 5000,

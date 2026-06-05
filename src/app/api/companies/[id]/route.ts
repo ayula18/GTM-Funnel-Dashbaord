@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { errorMessage } from '@/lib/utils';
 import { getCompanyById, updateCompany, computeDiscardReasons, qp } from '@/lib/db';
