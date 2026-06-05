@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Users, DollarSign, Globe, Link2, Tags } from 'lucide-react';
+import { Loader2, Users, DollarSign, Globe, Link2, Tags, FileSpreadsheet } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import {
   Dialog,
@@ -119,6 +119,18 @@ export default function CategorizationPage() {
                 ))}
               </SelectContent>
             </Select>
+
+            <Button
+              variant="outline"
+              className="gap-2 text-slate-700 bg-slate-50 border-slate-200 hover:bg-slate-100"
+              onClick={() => {
+                const exportUrl = `/api/export/categorization?net_new=${netNewFilter}${selectedFunnel !== 'all' ? `&funnel_id=${selectedFunnel}` : ''}`;
+                window.open(exportUrl, '_blank');
+              }}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Excel
+            </Button>
 
             <Badge variant="outline" className="text-emerald-600 bg-emerald-50 border-emerald-200 px-3 py-1 text-sm">
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}

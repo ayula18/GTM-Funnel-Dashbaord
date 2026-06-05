@@ -34,11 +34,11 @@ export async function uploadCsv(
   let result: UploadResult | null = null;
   let errorMsg: string | null = null;
 
-  const handle = (line: string) => {
+  const handle = (line: string): boolean => {
     const trimmed = line.trim();
-    if (!trimmed) return;
+    if (!trimmed) return false;
     let msg: Record<string, unknown>;
-    try { msg = JSON.parse(trimmed); } catch { return; }
+    try { msg = JSON.parse(trimmed); } catch { return false; }
 
     if (msg.type === 'progress') {
       const total = (msg.total as number) || 0;
@@ -49,11 +49,15 @@ export async function uploadCsv(
         pct: total ? Math.min(100, Math.round((processed / total) * 100)) : 0,
         finalizing: msg.phase === 'finalizing',
       });
+      return false;
     } else if (msg.type === 'done') {
       result = msg.result as UploadResult;
+      return true;
     } else if (msg.type === 'error') {
       errorMsg = (msg.error as string) || 'Upload failed';
+      return true;
     }
+    return false;
   };
 
   for (;;) {
@@ -61,10 +65,15 @@ export async function uploadCsv(
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     let nl: number;
+    let shouldBreak = false;
     while ((nl = buffer.indexOf('\n')) >= 0) {
-      handle(buffer.slice(0, nl));
+      if (handle(buffer.slice(0, nl))) {
+        shouldBreak = true;
+        break;
+      }
       buffer = buffer.slice(nl + 1);
     }
+    if (shouldBreak) break;
   }
   if (buffer) handle(buffer);
 

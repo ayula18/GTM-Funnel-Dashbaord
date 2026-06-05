@@ -270,9 +270,9 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
   return (
     <div className="p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{funnel.name}</h1>
+      <div className="flex flex-col gap-6">
+        <div className="min-w-0 w-full text-center sm:text-left">
+          <h1 className="text-3xl font-bold tracking-tight break-all sm:break-normal">{funnel.name}</h1>
           <p className="text-muted-foreground mt-1">
             {funnel.description || 'No description'} • {formatNumber(funnel.total_companies)} companies
             {funnel.unclassified > 0 && (
@@ -281,7 +281,7 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-start justify-center sm:justify-start gap-3 shrink-0">
           {selectedIds.length > 0 && (
             <Button variant="outline" onClick={handlePushToMaster} className="text-emerald-600 border-emerald-500/50 hover:bg-emerald-500/10">
               <ListChecks className="w-4 h-4 mr-2" />
