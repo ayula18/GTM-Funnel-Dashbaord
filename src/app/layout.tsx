@@ -23,7 +23,7 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased bg-background text-foreground flex min-h-screen`}>
         <TooltipProvider>
           <Sidebar />
-          <main className="flex-1 flex flex-col min-w-0 ml-[260px] min-h-screen">
+          <main className="flex-1 flex flex-col min-w-0 ml-[260px] min-h-screen pb-24">
             {children}
           </main>
           <ChatWidget />

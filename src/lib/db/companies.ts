@@ -291,14 +291,21 @@ export async function getCompanyById(id: number) {
 
 // ── Discard Reason Computation ────────────────────────────────────────────────────────
 
-export async function computeDiscardReasons(funnelId: number) {
-  const rows = await qp(`
+export async function computeDiscardReasons(funnelId: number, companyId?: number) {
+  let query = `
     SELECT c.id, c.is_in_apollo, c.employee_reo, c.apollo_employees,
            c.icp_decision, c.total_funding, c.annual_revenue,
            c.crunchbase_funding, c.revenue_reo, c.scrape_status, c.manual_icp
     FROM funnel_companies fc JOIN companies c ON fc.company_id = c.id
     WHERE fc.funnel_id = $1
-  `, [funnelId]);
+  `;
+  const params: unknown[] = [funnelId];
+  if (companyId) {
+    query += ' AND c.id = $2';
+    params.push(companyId);
+  }
+
+  const rows = await qp(query, params);
 
   await withTx(async (client) => {
     for (const r of rows) {

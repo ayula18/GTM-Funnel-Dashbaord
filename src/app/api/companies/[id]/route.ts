@@ -48,7 +48,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     // Recompute discard reasons for all funnels this company is in
     const funnelLinks = await qp('SELECT funnel_id FROM funnel_companies WHERE company_id = $1', [companyId]);
     for (const link of funnelLinks) {
-      await computeDiscardReasons(link.funnel_id as number);
+      await computeDiscardReasons(link.funnel_id as number, companyId);
     }
 
     return NextResponse.json({ success: true });
