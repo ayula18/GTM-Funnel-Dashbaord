@@ -101,7 +101,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
     setMerging(true);
     try {
       // 1. Resolve domain to company ID
-      const res1 = await fetch(`/api/companies?search=${encodeURIComponent(mergeDomain)}&per_page=1`);
+      const res1 = await fetch(`/api/companies?exact_domain=${encodeURIComponent(mergeDomain)}&per_page=1`);
       const data1 = await res1.json();
       if (!data1.data || data1.data.length === 0) {
         throw new Error('Target domain not found in database. Make sure it exists first.');

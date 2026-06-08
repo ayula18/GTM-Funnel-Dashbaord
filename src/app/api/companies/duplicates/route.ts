@@ -37,9 +37,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ scanned: true, duplicates_found: found });
     }
 
-    if (!body.id || !['approve', 'reject'].includes(body.action)) {
+    if (!body.id || !['approve', 'reject', 'approve_reverse'].includes(body.action)) {
       return NextResponse.json(
-        { error: 'Required: id (number), action ("approve" | "reject")' },
+        { error: 'Required: id (number), action ("approve" | "reject" | "approve_reverse")' },
         { status: 400 },
       );
     }

@@ -181,6 +181,11 @@ export function buildCompanyFilter(
     values.push(s, s, s);
   }
 
+  if (filters.exact_domain) {
+    conditions.push('c.domain = ?');
+    values.push(filters.exact_domain);
+  }
+
   conditions.push('c.merged_into_id IS NULL');
 
   for (const [key, col] of Object.entries(FACET_COLUMNS)) {

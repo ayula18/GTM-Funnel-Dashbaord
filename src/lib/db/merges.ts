@@ -187,7 +187,7 @@ export async function getMergeCandidates(funnelId?: number) {
   return qdb(query, params);
 }
 
-export async function resolveMergeCandidate(id: number, action: 'approve' | 'reject') {
+export async function resolveMergeCandidate(id: number, action: 'approve' | 'approve_reverse' | 'reject') {
   if (action === 'reject') {
     await qp("UPDATE merge_candidates SET status = 'rejected', resolved_at = NOW() WHERE id = $1", [id]);
     return { action: 'rejected' };
@@ -196,8 +196,13 @@ export async function resolveMergeCandidate(id: number, action: 'approve' | 'rej
   const candidates = await qp('SELECT * FROM merge_candidates WHERE id = $1', [id]);
   if (!candidates.length) throw new Error('Merge candidate not found');
 
-  const primaryId   = candidates[0].company_id_1 as number;
-  const secondaryId = candidates[0].company_id_2 as number;
+  let primaryId   = candidates[0].company_id_1 as number;
+  let secondaryId = candidates[0].company_id_2 as number;
+
+  if (action === 'approve_reverse') {
+    primaryId = candidates[0].company_id_2 as number;
+    secondaryId = candidates[0].company_id_1 as number;
+  }
 
   await mergeCompanies(primaryId, secondaryId);
   await qp("UPDATE merge_candidates SET status = 'approved', resolved_at = NOW() WHERE id = $1", [id]);

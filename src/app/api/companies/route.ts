@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
     // String filters (support comma-separated multi-value)
     [
-      'search', 'icp_decision', 'company_classification', 'category',
+      'search', 'exact_domain', 'icp_decision', 'company_classification', 'category',
       'confidence', 'company_country', 'icp_fit_level', 'company_type',
       'scrape_status', 'discard_reason', 'sort_by', 'sort_order', 'manual_icp',
       'funnel_step',

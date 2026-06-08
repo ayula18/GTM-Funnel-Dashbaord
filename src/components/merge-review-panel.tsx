@@ -60,7 +60,7 @@ export function MergeReviewPanel({ funnelId, onMergeComplete }: MergeReviewPanel
   const fetchCandidates = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/companies/duplicates?funnel_id=${funnelId}`);
+      const res = await fetch(`/api/companies/duplicates?funnel_id=${funnelId}&_t=${Date.now()}`);
       const data = await res.json();
       setCandidates(data.candidates || []);
     } catch {
@@ -74,7 +74,7 @@ export function MergeReviewPanel({ funnelId, onMergeComplete }: MergeReviewPanel
     fetchCandidates();
   }, [fetchCandidates]);
 
-  const handleResolve = async (id: number, action: 'approve' | 'reject') => {
+  const handleResolve = async (id: number, action: 'approve' | 'approve_reverse' | 'reject') => {
     // Keep a copy in case we need to roll back
     const candidateToResolve = candidates.find(c => c.id === id);
     if (!candidateToResolve) return;
@@ -91,7 +91,7 @@ export function MergeReviewPanel({ funnelId, onMergeComplete }: MergeReviewPanel
       });
       if (!res.ok) throw new Error('Failed to resolve');
       
-      toast.success(action === 'approve' ? 'Companies merged!' : 'Marked as different companies');
+      toast.success(action.startsWith('approve') ? 'Companies merged!' : 'Marked as different companies');
       onMergeComplete?.();
     } catch {
       toast.error('Failed to resolve merge candidate');
@@ -297,25 +297,34 @@ export function MergeReviewPanel({ funnelId, onMergeComplete }: MergeReviewPanel
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2 mt-4 justify-end">
+              <div className="flex items-center gap-2 mt-4">
+                <div className="flex gap-2 mr-2">
+                  <Button 
+                    size="sm" 
+                    onClick={() => handleResolve(c.id, 'approve')}
+                    disabled={resolving === c.id}
+                  >
+                    <Check className="mr-1.5 h-4 w-4" />
+                    {resolving === c.id ? 'Merging...' : 'Keep A, Merge B'}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    onClick={() => handleResolve(c.id, 'approve_reverse')}
+                    disabled={resolving === c.id}
+                  >
+                    <GitMerge className="mr-1.5 h-4 w-4" />
+                    Keep B, Merge A
+                  </Button>
+                </div>
                 <Button 
-                  variant="outline" 
                   size="sm" 
-                  className="text-red-500 hover:text-red-600 hover:border-red-500/30 hover:bg-red-500/5"
-                  disabled={resolving === c.id}
+                  variant="outline"
                   onClick={() => handleResolve(c.id, 'reject')}
-                >
-                  <X className="h-3.5 w-3.5 mr-1.5" />
-                  Different companies
-                </Button>
-                <Button 
-                  size="sm"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   disabled={resolving === c.id}
-                  onClick={() => handleResolve(c.id, 'approve')}
                 >
-                  <Check className="h-3.5 w-3.5 mr-1.5" />
-                  {resolving === c.id ? 'Merging...' : 'Yes, merge them'}
+                  <X className="mr-1.5 h-4 w-4 text-muted-foreground" />
+                  Different companies
                 </Button>
               </div>
             </div>
