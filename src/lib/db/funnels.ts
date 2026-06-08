@@ -121,6 +121,8 @@ export async function getFunnelSteps(funnelId: number) {
       COUNT(*) FILTER (WHERE ${g2} AND ${g3})                                    AS step3_employees,
       COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4})                          AS step4_icp_total,
       COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4} AND c.is_netnew = 1)      AS step4_icp_netnew,
+      COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4} AND c.is_netnew = 1 AND c.company_classification IN ('DevTool', 'DevTools')) AS step5_netnew_devtool,
+      COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4} AND c.is_netnew = 1 AND c.company_classification = 'IT Services & Solutions') AS step5_netnew_it,
       COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND c.company_classification = 'IT Services & Solutions') AS step4_services,
       COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4} AND ${g5})               AS step5_funded_total,
       COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4} AND ${g5} AND c.is_netnew = 1) AS step5_funded_netnew
@@ -141,6 +143,8 @@ export async function getFunnelSteps(funnelId: number) {
     step2_apollo,       step2_drop: step1_raw       - step2_apollo,
     step3_employees,    step3_drop: step2_apollo    - step3_employees,
     step4_icp_total,    step4_icp_netnew: n(row.step4_icp_netnew),
+    step5_netnew_devtool: n(row.step5_netnew_devtool),
+    step5_netnew_it: n(row.step5_netnew_it),
     step4_services:     n(row.step4_services),
     step4_drop:         step3_employees - step4_icp_total,
     step5_funded_total, step5_funded_netnew: n(row.step5_funded_netnew),
@@ -175,4 +179,30 @@ export async function getFilterOptions(
   const keys = Object.keys(FACET_COLUMNS);
   const results = await Promise.all(keys.map(k => getFacet(k, FACET_COLUMNS[k])));
   return Object.fromEntries(keys.map((k, i) => [k, results[i]]));
+}
+
+// ── Daily Insights ─────────────────────────────────────────────────────────────
+
+export async function getFunnelDailyInsights(funnelId: number) {
+  const g2 = FUNNEL_STEP_GATES[2];
+  const g3 = FUNNEL_STEP_GATES[3];
+  const g4 = FUNNEL_STEP_GATES[4];
+
+  const rows = await qp(`
+    SELECT
+      DATE(c.created_at) as date,
+      COUNT(*) as total_checked,
+      COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4}) as icps
+    FROM funnel_companies fc
+    JOIN companies c ON fc.company_id = c.id
+    WHERE fc.funnel_id = $1 AND c.merged_into_id IS NULL
+    GROUP BY DATE(c.created_at)
+    ORDER BY DATE(c.created_at) ASC
+  `, [funnelId]);
+
+  return rows.map((r: any) => ({
+    date: r.date,
+    total_checked: Number(r.total_checked),
+    icps: Number(r.icps),
+  }));
 }

@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { getCompanies, getFunnel, getFunnelSteps } from './db';
+import { getCompanies, getFunnel, getFunnelSteps, getFunnelDailyInsights } from './db';
 import { getCategorizationData } from './db/companies';
 import type { FunnelSteps, Company } from './types';
 
@@ -58,6 +58,9 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
   const wb = new ExcelJS.Workbook();
   wb.creator = 'ICP Dashboard';
   wb.created = new Date();
+
+  const dailyInsights = await getFunnelDailyInsights(funnelId);
+  buildInsightsSheet(wb, steps, dailyInsights);
 
   const addSheet = (name: string, keys: string[], rows: Row[]) => {
     const ws = wb.addWorksheet(name.slice(0, 31), { views: [{ state: 'frozen', ySplit: 1 }] });
@@ -119,6 +122,138 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
 
   const buffer = Buffer.from(await wb.xlsx.writeBuffer());
   return { buffer, funnelName };
+}
+
+function buildInsightsSheet(wb: ExcelJS.Workbook, steps: FunnelSteps, dailyInsights: any[]) {
+  const ws = wb.addWorksheet('Insights', { views: [{ showGridLines: false }] });
+  
+  // Funnel View Section
+  ws.mergeCells('A1:G1');
+  const title1 = ws.getCell('A1');
+  title1.value = 'After new automation';
+  title1.font = { bold: true };
+  title1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF68A2EB' } };
+  title1.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  ws.getCell('A2').value = 'Step 1';
+  ws.getCell('B2').value = 'Step 2 [Base]';
+  ws.getCell('C2').value = 'Step 3';
+  ws.mergeCells('D2:E2');
+  ws.getCell('D2').value = 'Step 4';
+  ws.mergeCells('F2:G2');
+  ws.getCell('F2').value = 'Step 5';
+
+  const stepRow = ws.getRow(2);
+  stepRow.font = { bold: true };
+  stepRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+  stepRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  ws.getCell('A3').value = 'Raw dump';
+  ws.getCell('B3').value = 'Running list through apollo';
+  ws.getCell('C3').value = 'More than 1 > Employe';
+  ws.mergeCells('D3:E3');
+  ws.getCell('D3').value = 'Is ICP or Not?';
+  ws.mergeCells('F3:G3');
+  ws.getCell('F3').value = 'Data from NetNew';
+  ws.getRow(3).alignment = { horizontal: 'center', vertical: 'middle' };
+
+  ws.getCell('D4').value = 'Total';
+  ws.getCell('E4').value = 'NetNew';
+  ws.getCell('F4').value = 'Is Devops?';
+  ws.getCell('G4').value = 'Is IT & Services';
+  ws.getRow(4).font = { bold: true };
+  ws.getRow(4).alignment = { horizontal: 'center', vertical: 'middle' };
+
+  ws.getCell('A5').value = steps.step1_raw;
+  ws.getCell('B5').value = steps.step2_apollo;
+  ws.getCell('C5').value = steps.step3_employees;
+  ws.getCell('D5').value = steps.step4_icp_total;
+  ws.getCell('E5').value = steps.step4_icp_netnew;
+  ws.getCell('F5').value = steps.step5_netnew_devtool;
+  ws.getCell('G5').value = steps.step5_netnew_it;
+  ws.getRow(5).alignment = { horizontal: 'center', vertical: 'middle' };
+
+  // Adjust column widths
+  ws.getColumn('A').width = 25;
+  ws.getColumn('B').width = 30;
+  ws.getColumn('C').width = 25;
+  ws.getColumn('D').width = 15;
+  ws.getColumn('E').width = 15;
+  ws.getColumn('F').width = 20;
+  ws.getColumn('G').width = 25;
+
+  // Add borders to the first table
+  for (let r = 1; r <= 5; r++) {
+    for (let c = 1; c <= 7; c++) {
+      if (r === 4 && c < 4) continue; // blank cells
+      const cell = ws.getCell(r, c);
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+        left: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+        bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+        right: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+      };
+    }
+  }
+
+  // Daily Insights Section
+  const startRow = 8;
+  ws.getCell(`B${startRow}`).value = 'Total Domains checked';
+  ws.getCell(`C${startRow}`).value = '#ICPs*';
+  
+  const headerRow = ws.getRow(startRow);
+  headerRow.font = { bold: true };
+  headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F2FF' } }; // Light blue like screenshot
+  headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  let currentRow = startRow + 1;
+  let sumDomains = 0;
+  let sumIcps = 0;
+
+  for (const insight of dailyInsights) {
+    // Format date as "Till 5 June 2026" or similar if needed. For now just format nicely.
+    const dateStr = insight.date instanceof Date 
+      ? insight.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      : String(insight.date);
+
+    ws.getCell(`A${currentRow}`).value = dateStr;
+    ws.getCell(`B${currentRow}`).value = insight.total_checked;
+    ws.getCell(`C${currentRow}`).value = insight.icps;
+    ws.getRow(currentRow).alignment = { horizontal: 'center', vertical: 'middle' };
+    
+    sumDomains += insight.total_checked;
+    sumIcps += insight.icps;
+    currentRow++;
+  }
+
+  // Empty row before total if needed, but screenshot shows it right after
+  ws.getCell(`A${currentRow}`).value = 'Total';
+  ws.getCell(`B${currentRow}`).value = sumDomains;
+  ws.getCell(`C${currentRow}`).value = sumIcps;
+  const totalRow = ws.getRow(currentRow);
+  totalRow.font = { bold: true };
+  totalRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  // Add borders to the second table
+  for (let r = startRow; r <= currentRow; r++) {
+    for (let c = 1; c <= 3; c++) {
+      if (r === startRow && c === 1) continue; // Top left is blank
+      const cell = ws.getCell(r, c);
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } },
+      };
+    }
+  }
+
+  currentRow++;
+  ws.mergeCells(`A${currentRow}:C${currentRow}`);
+  const footer = ws.getCell(`A${currentRow}`);
+  footer.value = '* Developer focussed companies > 1 emp, Note funding data not checked for this yet';
+  footer.font = { size: 10 };
+  footer.alignment = { horizontal: 'left', vertical: 'middle' };
 }
 
 function buildSummarySheet(wb: ExcelJS.Workbook, funnel: Row, steps: FunnelSteps) {

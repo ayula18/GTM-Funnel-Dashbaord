@@ -121,6 +121,8 @@ export interface FunnelSteps {
   step3_drop: number;          // Drop from step2 to step3
   step4_icp_total: number;     // ICP = Yes
   step4_icp_netnew: number;    // ICP = Yes AND NetNew
+  step5_netnew_devtool: number; // NetNew AND DevTool
+  step5_netnew_it: number;      // NetNew AND IT Services
   step4_services: number;      // IT Services count
   step4_drop: number;          // Drop from step3 to step4
   step5_funded_total: number;  // Funding/Revenue > 100K
