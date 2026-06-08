@@ -257,6 +257,6 @@ export async function buildCategorizationWorkbook(funnelId: number | null, netNe
   addSheet('Irrelevant', exportColumns, buckets.irrelevant);
   addSheet('Unclassified', exportColumns, buckets.unclassified);
 
-  const buffer = await wb.xlsx.writeBuffer();
-  return { buffer: buffer as Buffer, funnelName: 'Categorization' };
+  const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+  return { buffer, funnelName: 'Categorization' };
 }

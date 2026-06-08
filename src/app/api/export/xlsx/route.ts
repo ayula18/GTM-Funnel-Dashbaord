@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     const safeName = funnelName.replace(/[^\w\- ]+/g, '').trim() || 'Funnel';
     const fileName = `${safeName} ${date}.xlsx`;
 
-    return new NextResponse(new Uint8Array(buffer), {
+    return new NextResponse(buffer as any, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': `attachment; filename="${fileName}"`,

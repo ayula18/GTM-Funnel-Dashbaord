@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const prefix = funnelId ? `funnel_${funnelId}_` : 'all_';
     const filename = `${prefix}categorization_of_icp_companies_${dateStr}.xlsx`;
 
-    return new Response(buffer, {
+    return new Response(buffer as any, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
