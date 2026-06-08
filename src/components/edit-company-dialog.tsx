@@ -30,7 +30,7 @@ interface EditCompanyDialogProps {
   company: CompanyRow;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: () => void;
+  onSave: (updatedData?: Partial<CompanyRow> | { _deleted: boolean }) => void;
 }
 
 export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditCompanyDialogProps) {
@@ -88,7 +88,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
       if (!res.ok) throw new Error('Failed to save');
       
       toast.success('Company updated');
-      onSave();
+      onSave(payload);
     } catch (error) {
       toast.error('Error updating company', { description: errorMessage(error) });
     } finally {
@@ -126,7 +126,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
       }
 
       toast.success(`Successfully merged into ${data1.data[0].domain}`);
-      onSave();
+      onSave({ _deleted: true });
     } catch (error) {
       toast.error('Merge failed', { description: errorMessage(error) });
     } finally {

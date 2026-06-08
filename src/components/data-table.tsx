@@ -106,14 +106,14 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
   }, [scopeParams]);
 
   const buildFilterUrl = useCallback(() => {
-    let url = `/api/companies?page=${page}&per_page=${perPage}&sort_by=${sortBy}&sort_order=${sortOrder}`;
+    let url = `/api/companies?page=${page}&per_page=${perPage}&sort_by=${sortBy}&sort_order=${sortOrder}&_t=${Date.now()}`;
     const scope = scopeParams();
     if (scope) url += `&${scope}`;
     return url;
   }, [page, sortBy, sortOrder, scopeParams]);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const res = await fetch(buildFilterUrl());
       const result = await res.json();
@@ -123,7 +123,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
     } catch (error) {
       console.error("Failed to fetch table data", error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [buildFilterUrl]);
 
@@ -139,12 +139,26 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
     onSelectionChange?.(Array.from(selectedIds));
   }, [selectedIds, onSelectionChange]);
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = (updatedData?: Partial<CompanyRow> | { _deleted: boolean }) => {
+    if (updatedData) {
+      if ('_deleted' in updatedData && updatedData._deleted) {
+        setData(prev => prev.filter(r => r.id !== editingCompany?.id));
+      } else {
+        setData(prev => prev.map(r => r.id === editingCompany?.id ? { ...r, ...updatedData } as CompanyRow : r));
+      }
+    }
     setEditingCompany(null);
-    fetchData();
+    fetchData(false);
   };
 
   const handleForcePass = async (id: number) => {
+    // Optimistic UI update
+    if (viewMode === 'discarded') {
+      setData(prev => prev.filter(r => r.id !== id));
+    } else {
+      setData(prev => prev.map(r => r.id === id ? { ...r, manual_icp: 'Yes' } : r));
+    }
+
     try {
       const res = await fetch(`/api/companies/${id}`, {
         method: 'PATCH',
@@ -154,12 +168,12 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
       if (!res.ok) throw new Error('Failed to update');
       toast.success('Company forcefully passed to ICP');
       
-      // If we are viewing a specific funnel step, we might want to re-trigger backend computation,
-      // but patching manual_icp already clears the discard flags.
-      // Refreshing the table will remove it from the discarded view.
-      fetchData();
+      // Silent refresh
+      fetchData(false);
     } catch (err) {
       toast.error('Failed to force pass', { description: errorMessage(err) });
+      // On error, we just fetch to revert optimistic state
+      fetchData(false);
     }
   };
 

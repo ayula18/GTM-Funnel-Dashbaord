@@ -75,7 +75,14 @@ export function MergeReviewPanel({ funnelId, onMergeComplete }: MergeReviewPanel
   }, [fetchCandidates]);
 
   const handleResolve = async (id: number, action: 'approve' | 'reject') => {
+    // Keep a copy in case we need to roll back
+    const candidateToResolve = candidates.find(c => c.id === id);
+    if (!candidateToResolve) return;
+
+    // Optimistic UI update
     setResolving(id);
+    setCandidates(prev => prev.filter(c => c.id !== id));
+
     try {
       const res = await fetch('/api/companies/duplicates', {
         method: 'POST',
@@ -85,10 +92,11 @@ export function MergeReviewPanel({ funnelId, onMergeComplete }: MergeReviewPanel
       if (!res.ok) throw new Error('Failed to resolve');
       
       toast.success(action === 'approve' ? 'Companies merged!' : 'Marked as different companies');
-      setCandidates(prev => prev.filter(c => c.id !== id));
       onMergeComplete?.();
     } catch {
       toast.error('Failed to resolve merge candidate');
+      // Rollback optimistic update
+      setCandidates(prev => [candidateToResolve, ...prev]);
     } finally {
       setResolving(null);
     }
