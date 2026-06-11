@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs';
 import { getCompanies, getFunnel, getFunnelSteps, getFunnelDailyInsights } from './db';
 import { getCategorizationData } from './db/companies';
-import { getBucketId } from './bucketing';
+import { getBucketId, BUCKET_META } from './bucketing';
 import type { FunnelSteps, Company } from './types';
 
 // ── Funnel → multi-tab Excel workbook ────────────────────────────────────────
@@ -34,7 +34,41 @@ const LABELS: Record<string, string> = {
 const label = (k: string) => LABELS[k] || k;
 
 // 0/1 columns shown as Yes / blank for readability.
-const BOOL_FIELDS = new Set(['is_netnew', 'is_in_apollo', 'needs_manual_review']);
+const BOOL_FIELDS = new Set(['is_netnew', 'is_in_apollo', 'needs_manual_review', 'is_nonprofit']);
+
+// ── Final Output sheet ───────────────────────────────────────────────────────
+// The full hand-off sheet the manager wants: every column from the original
+// enrichment, in their exact order/wording. [field key, exact header] pairs.
+// `is_services`, `source`, and `final_bucket` are computed per-row below.
+const FINAL_OUTPUT_COLUMNS: Array<[string, string]> = [
+  ['company_name', 'company_name'],
+  ['domain', 'domain'],
+  ['is_in_apollo', 'Is In Apollo'],
+  ['employee_reo', 'ReoDB employee count'],
+  ['apollo_employees', 'Apollo Employee Count'],
+  ['icp_decision', 'Is ICP'],
+  ['is_services', 'Is Services?'],
+  ['is_netnew', 'Is NetNew?'],
+  ['total_funding', 'Total Funding'],
+  ['crunchbase_funding', 'Crunchbase Funding'],
+  ['revenue_reo', 'Revenue'],
+  ['company_linkedin_url', 'Company Linkedin Url'],
+  ['company_country', 'Company Country'],
+  ['source', 'Source'],
+  ['category', 'Category'],
+  ['latest_funding_amount', 'Latest Funding Amount'],
+  ['last_raised_at', 'Last Raised At'],
+  ['annual_revenue', 'Annual Revenue'],
+  ['sic_codes', 'SIC Codes'],
+  ['naics_codes', 'NAICS Codes'],
+  ['short_description', 'Short Description'],
+  ['founded_year', 'Founded Year'],
+  ['subsidiary_of', 'Subsidiary of'],
+  ['manual_icp', 'Manual ICP'],
+  ['confidence', 'Confidence'],
+  ['is_nonprofit', 'Non profit ?'],
+  ['final_bucket', 'Final bucket'],
+];
 
 function cellValue(row: Row, key: string): string | number | null {
   const v = row[key];
@@ -56,9 +90,13 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
   });
   const companies = data as Row[];
   
-  // Compute dynamic buckets before rendering
+  // Compute dynamic / derived columns before rendering
   companies.forEach(c => {
-    c.gtm_bucket = getBucketId(c);
+    const bucketId = getBucketId(c);
+    c.gtm_bucket = bucketId;
+    c.final_bucket = BUCKET_META[bucketId]?.label ?? '';
+    c.is_services = String(c.company_classification ?? '').trim() === 'IT Services & Solutions' ? 'Yes' : '';
+    c.source = funnelName; // this export is scoped to one funnel → that funnel is the source
   });
 
   const steps = await getFunnelSteps(funnelId) as unknown as FunnelSteps;
@@ -70,31 +108,30 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
   const dailyInsights = await getFunnelDailyInsights(funnelId);
   buildInsightsSheet(wb, steps, dailyInsights);
 
-  const addSheet = (name: string, keys: string[], rows: Row[]) => {
+  // Render a sheet from explicit [field key, header] pairs (exact wording/order).
+  const addSheetWithHeaders = (name: string, cols: Array<[string, string]>, rows: Row[]) => {
     const ws = wb.addWorksheet(name.slice(0, 31), { views: [{ state: 'frozen', ySplit: 1 }] });
-    ws.columns = keys.map(k => ({
-      header: label(k),
+    ws.columns = cols.map(([k, h]) => ({
+      header: h,
       key: k,
-      width: Math.min(40, Math.max(12, label(k).length + 4)),
+      width: Math.min(40, Math.max(12, h.length + 4)),
     }));
     const header = ws.getRow(1);
     header.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
     header.alignment = { vertical: 'middle' };
-    for (const r of rows) ws.addRow(keys.map(k => cellValue(r, k)));
+    for (const r of rows) ws.addRow(cols.map(([k]) => cellValue(r, k)));
     if (rows.length > 0) {
-      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: keys.length } };
+      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
     }
   };
 
-  // 1) Main View
-  addSheet('Main View', [
-    'domain', 'company_name', 'company_country', 'apollo_employees', 'sales_team_count', 'employee_reo',
-    'total_funding', 'crunchbase_funding', 'annual_revenue', 'revenue_reo', 'founded_year',
-    'company_linkedin_url',
-    'icp_decision', 'company_classification', 'category', 'confidence', 'is_netnew', 'subsidiary_of',
-    'gtm_bucket', 'manual_gtm_bucket', 'manual_gtm_reason'
-  ], companies);
+  // Render a sheet from field keys, using the shared LABELS map for headers.
+  const addSheet = (name: string, keys: string[], rows: Row[]) =>
+    addSheetWithHeaders(name, keys.map(k => [k, label(k)] as [string, string]), rows);
+
+  // 1) Main View — the full hand-off sheet: every enrichment column, manager's order.
+  addSheetWithHeaders('Main View', FINAL_OUTPUT_COLUMNS, companies);
 
   // 2) ICP Results — only companies that have been classified / decided
   const icpRows = companies.filter(c => c.classified_at || c.icp_decision);
@@ -104,11 +141,14 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
     'needs_manual_review', 'classification_reason', 'observations',
   ], icpRows);
 
-  // 3) Enrichment by source — each source's own columns, only rows that have data
+  // 3) Enrichment by source — each source's own columns, only rows that have data.
+  // Apollo carries every Apollo-origin field we store, so the tab mirrors the
+  // original uploaded Apollo sheet rather than a trimmed subset.
   addSheet('Apollo',
-    ['domain', 'company_name', 'apollo_employees', 'sales_team_count', 'total_funding', 'latest_funding',
-     'latest_funding_amount', 'last_raised_at', 'annual_revenue', 'company_linkedin_url',
-     'sic_codes', 'naics_codes'],
+    ['domain', 'company_name', 'is_in_apollo', 'apollo_employees', 'sales_team_count',
+     'total_funding', 'latest_funding', 'latest_funding_amount', 'last_raised_at',
+     'annual_revenue', 'company_linkedin_url', 'company_country', 'website', 'founded_year',
+     'sic_codes', 'naics_codes', 'short_description', 'subsidiary_of'],
     companies.filter(c => Number(c.is_in_apollo) === 1 || c.apollo_employees != null || c.total_funding != null),
   );
   addSheet('Reo DB',

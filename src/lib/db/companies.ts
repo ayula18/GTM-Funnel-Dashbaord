@@ -299,11 +299,31 @@ export async function getCompanyById(id: number) {
 
 export async function computeDiscardReasons(funnelId: number, companyId?: number) {
   let query = `
-    SELECT c.id, c.is_in_apollo, c.employee_reo, c.apollo_employees,
-           c.icp_decision, c.total_funding, c.annual_revenue,
-           c.crunchbase_funding, c.revenue_reo, c.scrape_status, c.manual_icp
-    FROM funnel_companies fc JOIN companies c ON fc.company_id = c.id
-    WHERE fc.funnel_id = $1
+    UPDATE companies c
+    SET 
+      discard_reason = CASE 
+        WHEN c.scrape_status = 'domain_dead' THEN 'dead_domain'
+        WHEN c.manual_icp = 'Yes' THEN NULL
+        WHEN COALESCE(c.is_in_apollo, 0) = 0 THEN 'not_in_apollo'
+        WHEN COALESCE(c.employee_reo, 0) <= 0 AND COALESCE(c.apollo_employees, 0) <= 1 THEN 'low_employees'
+        WHEN c.icp_decision IS DISTINCT FROM 'Yes' THEN 'not_icp'
+        WHEN GREATEST(COALESCE(c.total_funding, 0), COALESCE(c.crunchbase_funding, 0)) <= 100000 
+         AND GREATEST(COALESCE(c.annual_revenue, 0), COALESCE(c.revenue_reo, 0)) <= 100000 THEN 'low_funding'
+        ELSE NULL
+      END,
+      discard_step = CASE 
+        WHEN c.scrape_status = 'domain_dead' THEN 1
+        WHEN c.manual_icp = 'Yes' THEN NULL
+        WHEN COALESCE(c.is_in_apollo, 0) = 0 THEN 2
+        WHEN COALESCE(c.employee_reo, 0) <= 0 AND COALESCE(c.apollo_employees, 0) <= 1 THEN 3
+        WHEN c.icp_decision IS DISTINCT FROM 'Yes' THEN 4
+        WHEN GREATEST(COALESCE(c.total_funding, 0), COALESCE(c.crunchbase_funding, 0)) <= 100000 
+         AND GREATEST(COALESCE(c.annual_revenue, 0), COALESCE(c.revenue_reo, 0)) <= 100000 THEN 5
+        ELSE NULL
+      END
+    FROM funnel_companies fc
+    WHERE fc.company_id = c.id 
+      AND fc.funnel_id = $1
   `;
   const params: unknown[] = [funnelId];
   if (companyId) {
@@ -311,44 +331,7 @@ export async function computeDiscardReasons(funnelId: number, companyId?: number
     params.push(companyId);
   }
 
-  const rows = await qp(query, params);
-
-  await withTx(async (client) => {
-    for (const r of rows) {
-      const id       = r.id as number;
-      const manualIcp = r.manual_icp as string | null;
-
-      if (r.scrape_status === 'domain_dead') {
-        await client.query("UPDATE companies SET discard_reason = 'dead_domain', discard_step = 1 WHERE id = $1", [id]);
-        continue;
-      }
-      if (manualIcp === 'Yes') {
-        await client.query('UPDATE companies SET discard_reason = NULL, discard_step = NULL WHERE id = $1', [id]);
-        continue;
-      }
-      if (!r.is_in_apollo) {
-        await client.query("UPDATE companies SET discard_reason = 'not_in_apollo', discard_step = 2 WHERE id = $1", [id]);
-        continue;
-      }
-      const empReo    = (r.employee_reo    as number) || 0;
-      const empApollo = (r.apollo_employees as number) || 0;
-      if (empReo <= 0 && empApollo <= 1) {
-        await client.query("UPDATE companies SET discard_reason = 'low_employees', discard_step = 3 WHERE id = $1", [id]);
-        continue;
-      }
-      if (r.icp_decision !== 'Yes') {
-        await client.query("UPDATE companies SET discard_reason = 'not_icp', discard_step = 4 WHERE id = $1", [id]);
-        continue;
-      }
-      const funding = Math.max((r.total_funding as number) || 0, (r.crunchbase_funding as number) || 0);
-      const revenue = Math.max((r.annual_revenue as number) || 0, (r.revenue_reo as number) || 0);
-      if (funding <= 100000 && revenue <= 100000) {
-        await client.query("UPDATE companies SET discard_reason = 'low_funding', discard_step = 5 WHERE id = $1", [id]);
-        continue;
-      }
-      await client.query('UPDATE companies SET discard_reason = NULL, discard_step = NULL WHERE id = $1', [id]);
-    }
-  });
+  await qp(query, params);
 }
 
 // ── Scrape Cache ────────────────────────────────────────────────────────

@@ -22,11 +22,15 @@ export async function GET(request: Request) {
     if (view === 'comments') {
       const search = searchParams.get('search') || undefined;
       const postId = searchParams.get('post_id') ? parseInt(searchParams.get('post_id')!) : undefined;
-      const isReply = searchParams.get('is_reply') === 'true' ? true : searchParams.get('is_reply') === 'false' ? false : undefined;
+      const isReplyParam = searchParams.get('is_reply');
+      const isReply = isReplyParam === 'true' ? true : isReplyParam === 'false' ? false : undefined;
+      const icpStatus = searchParams.get('icp_status') || undefined;
+      const isCustomerParam = searchParams.get('is_customer');
+      const isCustomer = isCustomerParam === 'true' ? true : isCustomerParam === 'false' ? false : undefined;
       const limit = parseInt(searchParams.get('limit') || '50');
       const offset = parseInt(searchParams.get('offset') || '0');
 
-      const { comments, total } = await getCommentsByCampaign(campaign, { search, postId, isReply, limit, offset });
+      const { comments, total } = await getCommentsByCampaign(campaign, { search, postId, isReply, icpStatus, isCustomer, limit, offset });
       return NextResponse.json({ comments, total });
     }
 

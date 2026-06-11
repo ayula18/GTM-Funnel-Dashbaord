@@ -42,6 +42,7 @@ const sections: NavSection[] = [
       { name: 'Overview', href: '/marketing', icon: BarChart3 },
       { name: 'Campaigns', href: '/marketing/campaigns', icon: Megaphone },
       { name: 'Comment Intel', href: '/marketing/comments', icon: MessageSquareText },
+      { name: 'Already Customer', href: '/marketing/customers', icon: Database },
     ],
   },
 ];

@@ -101,6 +101,13 @@ CREATE TABLE IF NOT EXISTS master_icp (
   added_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS customers (
+  id           SERIAL PRIMARY KEY,
+  domain       TEXT NOT NULL UNIQUE,
+  company_name TEXT,
+  added_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS scrape_cache (
   domain     TEXT PRIMARY KEY,
   html       TEXT,
@@ -192,6 +199,7 @@ CREATE INDEX IF NOT EXISTS idx_companies_discard        ON companies(discard_rea
 CREATE INDEX IF NOT EXISTS idx_funnel_companies_funnel  ON funnel_companies(funnel_id);
 CREATE INDEX IF NOT EXISTS idx_funnel_companies_company ON funnel_companies(company_id);
 CREATE INDEX IF NOT EXISTS idx_master_icp_domain        ON master_icp(domain);
+CREATE INDEX IF NOT EXISTS idx_customers_domain         ON customers(domain);
 CREATE INDEX IF NOT EXISTS idx_aliases_domain           ON domain_aliases(domain);
 CREATE INDEX IF NOT EXISTS idx_aliases_root             ON domain_aliases(root_name);
 CREATE INDEX IF NOT EXISTS idx_aliases_company          ON domain_aliases(company_id);

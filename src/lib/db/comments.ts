@@ -315,11 +315,12 @@ export interface LIComment {
   post_url: string;
   icp_status: string | null;
   enriched_company_name: string | null;
+  is_customer: boolean;
 }
 
 export async function getCommentsByCampaign(
   campaignTag: string,
-  opts?: { search?: string; postId?: number; isReply?: boolean; limit?: number; offset?: number },
+  opts?: { search?: string; postId?: number; isReply?: boolean; icpStatus?: string; isCustomer?: boolean; limit?: number; offset?: number },
 ): Promise<{ comments: LIComment[]; total: number }> {
   let where = `WHERE p.campaign_tag = $1`;
   const params: unknown[] = [campaignTag];
@@ -337,6 +338,20 @@ export async function getCommentsByCampaign(
     paramIdx++;
   }
 
+  if (opts?.icpStatus) {
+    where += ` AND pr.icp_status = $${paramIdx}`;
+    params.push(opts.icpStatus);
+    paramIdx++;
+  }
+
+  if (opts?.isCustomer !== undefined) {
+    if (opts.isCustomer) {
+      where += ` AND cust.id IS NOT NULL`;
+    } else {
+      where += ` AND cust.id IS NULL`;
+    }
+  }
+
   if (opts?.search) {
     where += ` AND (pr.name ILIKE $${paramIdx} OR c.comment_text ILIKE $${paramIdx} OR pr.headline ILIKE $${paramIdx})`;
     params.push(`%${opts.search}%`);
@@ -348,6 +363,7 @@ export async function getCommentsByCampaign(
      FROM linkedin_comments c
      JOIN linkedin_posts p ON p.id = c.post_id
      JOIN linkedin_profiles pr ON pr.id = c.profile_id
+     LEFT JOIN customers cust ON pr.enriched_company_domain = cust.domain
      ${where}`,
     params
   );
@@ -364,10 +380,12 @@ export async function getCommentsByCampaign(
             pr.icp_status,
             pr.enriched_company_name,
             p.post_title,
-            p.post_url
+            p.post_url,
+            CASE WHEN cust.id IS NOT NULL THEN true ELSE false END as is_customer
      FROM linkedin_comments c
      JOIN linkedin_posts p ON p.id = c.post_id
      JOIN linkedin_profiles pr ON pr.id = c.profile_id
+     LEFT JOIN customers cust ON pr.enriched_company_domain = cust.domain
      ${where}
      ORDER BY c.scraped_at DESC
      LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
@@ -388,12 +406,14 @@ export async function getCommentsForExport(campaignTag: string) {
         pr.enriched_company_name AS "Company",
         pr.enriched_company_domain AS "Domain",
         pr.enriched_company_linkedin AS "Company LinkedIn",
+        CASE WHEN cust.id IS NOT NULL THEN 'Yes' ELSE 'No' END AS "Is Customer?",
         p.post_title AS "Post Title",
         p.post_url AS "Post URL",
         c.scraped_at AS "Scraped At"
      FROM linkedin_comments c
      JOIN linkedin_posts p ON p.id = c.post_id
      JOIN linkedin_profiles pr ON pr.id = c.profile_id
+     LEFT JOIN customers cust ON pr.enriched_company_domain = cust.domain
      WHERE p.campaign_tag = $1
      ORDER BY c.scraped_at DESC`,
     [campaignTag]

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,12 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
   Upload as UploadIcon, Database, CheckCircle, AlertCircle, 
-  FileSpreadsheet, Globe, Layers, Beaker, ArrowRight
+  FileSpreadsheet, Globe, Layers, Beaker, ArrowRight, History
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { formatNumber, errorMessage } from '@/lib/utils';
+import { formatNumber, errorMessage, cn } from '@/lib/utils';
 import { detectSourceFromFile } from '@/lib/csv-detect';
 import { uploadCsv, type UploadProgress } from '@/lib/upload-client';
 import type { CsvSourceType, UploadResult } from '@/lib/types';
@@ -38,6 +38,23 @@ export default function UploadPage() {
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [masterLoading, setMasterLoading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
+  
+  const [logs, setLogs] = useState<any[]>([]);
+  const [fetchingLogs, setFetchingLogs] = useState(true);
+
+  const fetchLogs = async () => {
+    try {
+      const res = await fetch('/api/upload/logs');
+      const data = await res.json();
+      if (res.ok) setLogs(data.logs || []);
+    } catch (e) {
+      console.error('Failed to fetch logs', e);
+    } finally {
+      setFetchingLogs(false);
+    }
+  };
+
+  useEffect(() => { fetchLogs(); }, []);
 
   // Detect the source type in the browser the moment a file is chosen, so the
   // user can confirm or override BEFORE anything is committed.
@@ -76,6 +93,7 @@ export default function UploadPage() {
 
       setResult(data);
       toast.success('Funnel created successfully!');
+      fetchLogs(); // refresh logs after successful upload
     } catch (error) {
       toast.error('Upload failed', { description: errorMessage(error) });
     } finally {
@@ -326,6 +344,73 @@ export default function UploadPage() {
                 {masterLoading ? 'Importing...' : 'Update Master List'}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Upload Logs Section */}
+      <div className="mt-12">
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-primary" />
+              Upload History & Logs
+            </CardTitle>
+            <CardDescription>View detailed metrics for your past uploads.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {fetchingLogs ? (
+              <div className="text-sm text-muted-foreground py-8 text-center">Loading logs...</div>
+            ) : logs.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-8 text-center">No uploads yet.</div>
+            ) : (
+              <div className="border border-border rounded-lg overflow-hidden overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-muted/30 text-xs uppercase text-muted-foreground border-b border-border">
+                    <tr>
+                      <th className="px-4 py-3 font-medium whitespace-nowrap">Date</th>
+                      <th className="px-4 py-3 font-medium">Source / File</th>
+                      <th className="px-4 py-3 font-medium">Funnel</th>
+                      <th className="px-4 py-3 font-medium text-right">Rows</th>
+                      <th className="px-4 py-3 font-medium text-right text-emerald-600">New</th>
+                      <th className="px-4 py-3 font-medium text-right text-blue-600">Matched</th>
+                      <th className="px-4 py-3 font-medium text-right text-amber-600">Dups Skipped</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {logs.map(log => {
+                      const sInfo = log.source_type ? SOURCE_INFO[log.source_type] : null;
+                      return (
+                        <tr key={log.id} className="hover:bg-muted/10 transition-colors">
+                          <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(log.created_at).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {sInfo && (
+                                <Badge variant="outline" className={cn("text-[9px] shrink-0", sInfo.color)}>
+                                  {sInfo.label}
+                                </Badge>
+                              )}
+                              <span className="truncate max-w-[200px] text-xs font-medium" title={log.source_file}>
+                                {log.source_file || 'Manual Upload'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-xs font-medium truncate max-w-[150px]">
+                            {log.funnel_name || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums">{formatNumber(log.total_rows || 0)}</td>
+                          <td className="px-4 py-3 text-right tabular-nums text-emerald-600 font-medium">{formatNumber(log.new_companies || 0)}</td>
+                          <td className="px-4 py-3 text-right tabular-nums text-blue-600 font-medium">{formatNumber(log.matched_companies || 0)}</td>
+                          <td className="px-4 py-3 text-right tabular-nums text-amber-600">{formatNumber(log.duplicates_skipped || 0)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -35,6 +35,7 @@ import {
   Check,
   X,
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -156,6 +157,10 @@ export default function CommentIntelPage() {
   const [profileTab, setProfileTab] = useState<'all' | 'pending' | 'enriched' | 'icp' | 'non-icp'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('posts');
+  const [filterCustomer, setFilterCustomer] = useState<string>('all');
+  const [filterIcp, setFilterIcp] = useState<string>('all');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterPost, setFilterPost] = useState<string>('all');
 
   // Enrichment
   const [isEnriching, setIsEnriching] = useState(false);
@@ -221,12 +226,17 @@ export default function CommentIntelPage() {
         limit: '100',
       });
       if (searchQuery) params.set('search', searchQuery);
+      if (filterCustomer !== 'all') params.set('is_customer', filterCustomer === 'yes' ? 'true' : 'false');
+      if (filterIcp !== 'all') params.set('icp_status', filterIcp);
+      if (filterType !== 'all') params.set('is_reply', filterType === 'reply' ? 'true' : 'false');
+      if (filterPost !== 'all') params.set('post_id', filterPost);
+      
       const res = await fetch(`/api/comments/profiles?${params}`);
       const data = await res.json();
       setComments(data.comments || []);
       setCommentTotal(data.total || 0);
     } catch { /* ignore */ }
-  }, [selectedCampaign, searchQuery]);
+  }, [selectedCampaign, searchQuery, filterCustomer, filterIcp, filterType, filterPost]);
 
   const fetchStats = useCallback(async () => {
     if (!selectedCampaign) return;
@@ -247,6 +257,7 @@ export default function CommentIntelPage() {
   useEffect(() => { fetchCampaigns(); }, [fetchCampaigns]);
   useEffect(() => { if (selectedCampaign) refreshAll(); }, [selectedCampaign, refreshAll]);
   useEffect(() => { fetchProfiles(); }, [profileTab, fetchProfiles]);
+  useEffect(() => { fetchComments(); }, [filterCustomer, filterIcp, filterType, filterPost, fetchComments]);
 
   // ── Handlers ───────────────────────────────────────────────────────
 
@@ -791,19 +802,67 @@ export default function CommentIntelPage() {
 
           {/* ═══════════ COMMENTS TAB ═══════════ */}
           <TabsContent value="comments" className="mt-6 space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search comments..."
-                  value={searchQuery}
-                  onChange={e => { setSearchQuery(e.target.value); }}
-                  onKeyDown={e => e.key === 'Enter' && fetchComments()}
-                  className="bg-muted/30 border border-border rounded-lg text-xs pl-9 pr-3 py-2 w-72 outline-none focus:border-primary/50"
-                />
+            <div className="flex items-start justify-between gap-4 flex-col lg:flex-row lg:items-center">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search comments..."
+                    value={searchQuery}
+                    onChange={e => { setSearchQuery(e.target.value); }}
+                    onKeyDown={e => e.key === 'Enter' && fetchComments()}
+                    className="bg-muted/30 border border-border rounded-lg text-xs pl-9 pr-3 py-2 w-64 outline-none focus:border-primary/50"
+                  />
+                </div>
+                
+                <Select value={filterCustomer} onValueChange={setFilterCustomer}>
+                  <SelectTrigger className="w-36 h-9 text-xs bg-muted/30">
+                    <SelectValue placeholder="Is Customer?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem className="text-xs" value="all">Is Customer? (All)</SelectItem>
+                    <SelectItem className="text-xs" value="yes">Yes</SelectItem>
+                    <SelectItem className="text-xs" value="no">No</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={filterIcp} onValueChange={setFilterIcp}>
+                  <SelectTrigger className="w-28 h-9 text-xs bg-muted/30">
+                    <SelectValue placeholder="ICP" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem className="text-xs" value="all">ICP (All)</SelectItem>
+                    <SelectItem className="text-xs" value="Yes">Yes</SelectItem>
+                    <SelectItem className="text-xs" value="No">No</SelectItem>
+                    <SelectItem className="text-xs" value="Pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-32 h-9 text-xs bg-muted/30">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem className="text-xs" value="all">Type (All)</SelectItem>
+                    <SelectItem className="text-xs" value="comment">Comment</SelectItem>
+                    <SelectItem className="text-xs" value="reply">Reply</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={filterPost} onValueChange={setFilterPost}>
+                  <SelectTrigger className="w-48 h-9 text-xs bg-muted/30 truncate">
+                    <SelectValue placeholder="Post" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem className="text-xs" value="all">Post (All)</SelectItem>
+                    {posts.map(p => (
+                      <SelectItem className="text-xs" key={p.id} value={p.id.toString()}>{p.post_title || 'Untitled Post'}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 shrink-0">
                 <span className="text-xs text-muted-foreground">{commentTotal} total comments</span>
                 <Button 
                   size="sm" 
@@ -830,6 +889,7 @@ export default function CommentIntelPage() {
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase w-36">Name</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase">Comment</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase w-32">Company</th>
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase w-20">Customer?</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase w-20">ICP</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase w-28">Post</th>
                       <th className="text-center px-4 py-3 font-semibold text-muted-foreground uppercase w-16">Type</th>
@@ -845,6 +905,13 @@ export default function CommentIntelPage() {
                         </td>
                         <td className="px-4 py-2.5 text-muted-foreground leading-relaxed max-w-md">{c.comment_text || '—'}</td>
                         <td className="px-4 py-2.5 text-muted-foreground text-[10px]">{c.enriched_company_name || '—'}</td>
+                        <td className="px-4 py-2.5">
+                          {c.is_customer ? (
+                            <Badge variant="outline" className="border-emerald-500/30 text-emerald-600 bg-emerald-500/10 text-[9px]">Yes</Badge>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground/50">No</span>
+                          )}
+                        </td>
                         <td className="px-4 py-2.5"><IcpBadge status={c.icp_status} /></td>
                         <td className="px-4 py-2.5 text-[10px] text-muted-foreground truncate max-w-[100px]">{c.post_title || 'Untitled'}</td>
                         <td className="px-4 py-2.5 text-center">
@@ -853,7 +920,7 @@ export default function CommentIntelPage() {
                       </tr>
                     ))}
                     {comments.length === 0 && (
-                      <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">No comments yet. Scrape a LinkedIn post first.</td></tr>
+                      <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">No comments yet. Scrape a LinkedIn post first.</td></tr>
                     )}
                   </tbody>
                 </table>
