@@ -49,13 +49,14 @@ export async function getFunnel(id: number) {
   return rows[0] ?? null;
 }
 
-export async function updateFunnel(id: number, data: { name?: string; description?: string; status?: string }) {
+export async function updateFunnel(id: number, data: { name?: string; description?: string; status?: string; color?: string }) {
   const sets: string[] = [];
   const values: unknown[] = [];
 
   if (data.name        !== undefined) { sets.push('name = ?');        values.push(data.name); }
   if (data.description !== undefined) { sets.push('description = ?'); values.push(data.description); }
   if (data.status      !== undefined) { sets.push('status = ?');      values.push(data.status); }
+  if (data.color       !== undefined) { sets.push('color = ?');       values.push(data.color); }
   sets.push('updated_at = NOW()');
 
   values.push(id);

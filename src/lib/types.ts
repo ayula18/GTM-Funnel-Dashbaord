@@ -99,6 +99,7 @@ export interface Funnel {
   created_at: string;
   updated_at: string;
   status: string; // active | archived
+  color?: string; // e.g., 'default', 'blue', 'green'
 }
 
 export interface FunnelWithStats extends Funnel {
