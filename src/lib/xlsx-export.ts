@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { getCompanies, getFunnel, getFunnelSteps, getFunnelDailyInsights } from './db';
 import { getCategorizationData } from './db/companies';
+import { getBucketId } from './bucketing';
 import type { FunnelSteps, Company } from './types';
 
 // ── Funnel → multi-tab Excel workbook ────────────────────────────────────────
@@ -88,7 +89,7 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
 
   // 1) Main View
   addSheet('Main View', [
-    'domain', 'company_name', 'company_country', 'apollo_employees', 'employee_reo',
+    'domain', 'company_name', 'company_country', 'apollo_employees', 'sales_team_count', 'employee_reo',
     'total_funding', 'crunchbase_funding', 'annual_revenue', 'revenue_reo', 'founded_year',
     'company_linkedin_url',
     'icp_decision', 'company_classification', 'category', 'confidence', 'is_netnew', 'subsidiary_of',
@@ -105,7 +106,7 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
 
   // 3) Enrichment by source — each source's own columns, only rows that have data
   addSheet('Apollo',
-    ['domain', 'company_name', 'apollo_employees', 'total_funding', 'latest_funding',
+    ['domain', 'company_name', 'apollo_employees', 'sales_team_count', 'total_funding', 'latest_funding',
      'latest_funding_amount', 'last_raised_at', 'annual_revenue', 'company_linkedin_url',
      'sic_codes', 'naics_codes'],
     companies.filter(c => Number(c.is_in_apollo) === 1 || c.apollo_employees != null || c.total_funding != null),
@@ -308,49 +309,6 @@ function buildSummarySheet(wb: ExcelJS.Workbook, funnel: Row, steps: FunnelSteps
   ws.addRow(['3 · Has Employees', steps.step3_employees, steps.step3_drop]);
   ws.addRow(['4 · ICP = Yes', steps.step4_icp_total, steps.step4_drop]);
   ws.addRow(['5 · Funded / Revenue', steps.step5_funded_total, steps.step5_drop]);
-}
-
-function getBucketId(company: any): string {
-  if (company.manual_gtm_bucket) {
-    return company.manual_gtm_bucket;
-  }
-
-  const isDevTool = company.company_classification === 'DevTool' || company.company_classification === 'DevTools';
-  const isITServices = company.company_classification === 'IT Services & Solutions';
-  const categoryStr = (company.category || '') + ' ' + (company.sub_category || '');
-  const isApiSdk = categoryStr.toLowerCase().includes('api') || categoryStr.toLowerCase().includes('sdk');
-
-  const employees = company.employee_reo || company.apollo_employees || 0;
-  
-  let funding = company.total_funding || 0;
-  if (!funding && company.crunchbase_funding) funding = company.crunchbase_funding;
-  
-  let revenue = company.revenue_reo || company.annual_revenue || 0;
-
-  const salesTeam = company.sales_team_count;
-
-  if (!isDevTool) {
-    if (isITServices || isApiSdk) {
-      return 'future_icp';
-    }
-    return 'irrelevant';
-  }
-
-  if (employees >= 500) return 'enterprise';
-  if (employees >= 200) return 'commercial';
-
-  if (salesTeam !== null && salesTeam !== undefined) {
-    if (salesTeam >= 2) return 'smb';
-    if (salesTeam === 1 || (salesTeam === 0 && (funding >= 5000000 || revenue >= 3000000))) return 'startup';
-    if (salesTeam === 0 && funding < 5000000 && revenue < 3000000) return 'immature';
-  }
-
-  if (employees >= 50) return 'smb';
-  
-  if (funding >= 5000000 || revenue >= 3000000) return 'startup';
-  if (funding > 0 || revenue > 0) return 'immature';
-
-  return 'unclassified';
 }
 
 export async function buildCategorizationWorkbook(funnelId: number | null, netNewFilter: string): Promise<FunnelWorkbook> {

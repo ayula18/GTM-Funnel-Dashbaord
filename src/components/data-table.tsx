@@ -371,6 +371,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                 {['main', 'icp'].includes(viewMode) && <TableHead>Confidence</TableHead>}
                 {['main', 'employees'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.employee_reo">Emp (Reo)</SortHeader></TableHead>}
                 {['main', 'apollo', 'employees'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.apollo_employees">Emp (Apollo)</SortHeader></TableHead>}
+                {['main', 'apollo'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.sales_team_count">Sales Team</SortHeader></TableHead>}
                 {['main', 'apollo', 'funding'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.total_funding">Funding (Apollo)</SortHeader></TableHead>}
                 {['main', 'apollo', 'funding'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.annual_revenue">Revenue (Apollo)</SortHeader></TableHead>}
                 {['main', 'funding'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.crunchbase_funding">Funding (CB)</SortHeader></TableHead>}
@@ -389,7 +390,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                 Array(8).fill(0).map((_, i) => (
                   <TableRow key={i} className="border-border">
                     {showSelection && <TableCell><div className="h-4 w-4 bg-muted animate-pulse rounded" /></TableCell>}
-                    {Array(showDiscardColumn ? 16 : 15).fill(0).map((_, j) => (
+                    {Array(showDiscardColumn ? 17 : 16).fill(0).map((_, j) => (
                       <TableCell key={j}><div className="h-4 w-16 bg-muted animate-pulse rounded" /></TableCell>
                     ))}
                     <TableCell></TableCell>
@@ -397,7 +398,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                 ))
               ) : data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={showDiscardColumn ? 20 : 19} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={showDiscardColumn ? 21 : 20} className="h-32 text-center text-muted-foreground">
                     No companies found matching the current filters.
                   </TableCell>
                 </TableRow>
@@ -491,6 +492,15 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                       <TableCell className="text-right text-sm tabular-nums">
                         {row.apollo_employees ? (
                           <span>{formatNumber(row.apollo_employees)}</span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                    )}
+                    {['main', 'apollo'].includes(viewMode) && (
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {row.sales_team_count ? (
+                          <span>{formatNumber(row.sales_team_count)}</span>
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>
                         )}

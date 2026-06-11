@@ -32,6 +32,7 @@ export const SOURCE_OWNED_FIELDS: Record<CsvSourceType, string[]> = {
     'sic_codes',
     'naics_codes',
     'company_linkedin_url',
+    'sales_team_count',
     'is_in_apollo',
   ],
   reo_db: [
@@ -139,6 +140,7 @@ export const MAPPABLE_FIELDS: MappableField[] = [
   { value: 'last_raised_at',         label: 'Last Raised At',         owner: 'apollo' },
   { value: 'annual_revenue',         label: 'Annual Revenue (Apollo)',owner: 'apollo' },
   { value: 'revenue_reo',            label: 'Revenue (Reo)',          owner: 'reo_db' },
+  { value: 'sales_team_count',       label: 'Sales Team (Apollo)',    owner: 'apollo' },
   { value: 'company_linkedin_url',   label: 'LinkedIn URL',           owner: 'apollo' },
   { value: 'sic_codes',              label: 'SIC Codes',              owner: 'apollo' },
   { value: 'naics_codes',            label: 'NAICS Codes',            owner: 'apollo' },

@@ -107,34 +107,8 @@ export async function POST(request: Request) {
     const unclassifiedCount = parseInt(String(funnelRow[0]?.unclassified || '0'));
 
     if (unclassifiedCount > 0) {
-      // Run the classification in the background, using the same time-boxed,
-      // attempt-marking batch processor as the GTM pipeline (so it can't loop
-      // forever on a failure). Note: like any background task this is best-effort
-      // on serverless; the Comment Intel page can re-trigger if interrupted.
-      (async () => {
-        try {
-          await updateFunnelClassification(funnelId, 'running', 0, unclassifiedCount, '');
-          let result = await processClassificationBatch(funnelId, apiKey);
-          while (!result.done) {
-            result = await processClassificationBatch(funnelId, apiKey);
-          }
-
-          // After pipeline completes, sync ICP status back to linkedin_profiles
-          for (const [domain, slugs] of Object.entries(profileSlugByDomain)) {
-            const companyRow = await qp<{ id: number; icp_decision: string }>(
-              `SELECT id, icp_decision FROM companies WHERE domain = $1`,
-              [domain]
-            );
-            if (companyRow.length > 0 && companyRow[0].icp_decision) {
-              for (const slug of slugs) {
-                await linkProfileToCompany(slug, companyRow[0].id, companyRow[0].icp_decision);
-              }
-            }
-          }
-        } catch (e) {
-          console.error('Comment Intel classification pipeline error:', e);
-        }
-      })();
+      // Set the funnel to running state so the client loop can pick it up
+      await updateFunnelClassification(funnelId, 'running', 0, unclassifiedCount, '');
     }
 
     return NextResponse.json({

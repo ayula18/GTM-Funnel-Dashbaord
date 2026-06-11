@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RawClassifier } from '@/components/raw-classifier';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -34,6 +35,7 @@ const buckets = [
 ];
 
 export default function CategorizationPage() {
+  const [view, setView] = useState<'board' | 'raw'>('board');
   const [selectedFunnel, setSelectedFunnel] = useState<string>('all');
   const [netNewFilter, setNetNewFilter] = useState<string>('netnew');
   const [selectedCompany, setSelectedCompany] = useState<any | null>(null);
@@ -95,7 +97,22 @@ export default function CategorizationPage() {
             <p className="text-sm text-slate-500 mt-1">
               Segment your final qualified accounts into actionable GTM buckets.
             </p>
+            {/* Sub-section toggle */}
+            <div className="inline-flex mt-3 rounded-lg bg-slate-100 p-0.5">
+              {([['board', 'GTM Board'], ['raw', 'Raw Classifier']] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => setView(id)}
+                  className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                    view === id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
+          {view === 'board' && (
           <div className="flex items-center gap-4">
             <Select value={netNewFilter} onValueChange={(val) => setNetNewFilter(val || 'netnew')}>
               <SelectTrigger className="w-[180px] bg-white">
@@ -137,10 +154,16 @@ export default function CategorizationPage() {
               Total Enriched Accounts: {totalAccounts}
             </Badge>
           </div>
+          )}
         </div>
       </div>
 
-      {/* Board Area */}
+      {view === 'raw' ? (
+        <div className="flex-1 overflow-y-auto p-8">
+          <RawClassifier />
+        </div>
+      ) : (
+      /* Board Area */
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-8">
         <div className="flex gap-6 h-full min-w-max pb-4">
           {buckets.map((bucketDef) => {
@@ -243,6 +266,7 @@ export default function CategorizationPage() {
           })}
         </div>
       </div>
+      )}
 
       {/* Manual Data Dialog */}
       <Dialog open={!!selectedCompany} onOpenChange={(open) => !open && setSelectedCompany(null)}>

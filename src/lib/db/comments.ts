@@ -103,6 +103,10 @@ export async function deletePost(postId: number): Promise<void> {
   await qp(`DELETE FROM linkedin_posts WHERE id = $1`, [postId]);
 }
 
+export async function updatePostTitle(postId: number, postTitle: string): Promise<void> {
+  await qp(`UPDATE linkedin_posts SET post_title = $1 WHERE id = $2`, [postTitle || null, postId]);
+}
+
 export async function getAllCampaignTags(): Promise<string[]> {
   const rows = await qp<{ campaign_tag: string }>(
     `SELECT DISTINCT campaign_tag FROM linkedin_posts ORDER BY campaign_tag`
@@ -373,6 +377,29 @@ export async function getCommentsByCampaign(
   return { comments, total: parseInt(countResult[0]?.count || '0') };
 }
 
+export async function getCommentsForExport(campaignTag: string) {
+  return qp(
+    `SELECT 
+        pr.name AS "Name",
+        pr.profile_url AS "LinkedIn Profile",
+        pr.headline AS "Headline",
+        c.comment_text AS "Comment",
+        pr.icp_status AS "ICP Status",
+        pr.enriched_company_name AS "Company",
+        pr.enriched_company_domain AS "Domain",
+        pr.enriched_company_linkedin AS "Company LinkedIn",
+        p.post_title AS "Post Title",
+        p.post_url AS "Post URL",
+        c.scraped_at AS "Scraped At"
+     FROM linkedin_comments c
+     JOIN linkedin_posts p ON p.id = c.post_id
+     JOIN linkedin_profiles pr ON pr.id = c.profile_id
+     WHERE p.campaign_tag = $1
+     ORDER BY c.scraped_at DESC`,
+    [campaignTag]
+  );
+}
+
 // ── Enrichment: bulk update profiles from Clay CSV ────────────────────
 
 export async function enrichProfiles(
@@ -473,9 +500,9 @@ export async function getAllCampaignCommentStats(): Promise<CampaignCommentStats
 
 // ── Get enriched domains for ICP classification ───────────────────────
 
-export async function getEnrichedDomainsForClassification(campaignTag: string): Promise<Array<{ profileId: number; domain: string; companyName: string | null }>> {
+export async function getEnrichedDomainsForClassification(campaignTag: string): Promise<Array<{ profileId: number; profileSlug: string; domain: string; companyName: string | null }>> {
   return qp(
-    `SELECT DISTINCT pr.id AS "profileId", pr.enriched_company_domain AS domain, pr.enriched_company_name AS "companyName"
+    `SELECT DISTINCT pr.id AS "profileId", pr.slug AS "profileSlug", pr.enriched_company_domain AS domain, pr.enriched_company_name AS "companyName"
      FROM linkedin_profiles pr
      JOIN linkedin_comments c ON c.profile_id = pr.id
      JOIN linkedin_posts p ON p.id = c.post_id

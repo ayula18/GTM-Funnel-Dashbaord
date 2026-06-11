@@ -203,6 +203,7 @@ export async function parseAndImportCsv(
             case 'founded_year':
             case 'crunchbase_funding':
             case 'revenue_reo':
+            case 'sales_team_count':
               companyData[field] = parseNumeric(value);
               break;
             case 'is_in_apollo':

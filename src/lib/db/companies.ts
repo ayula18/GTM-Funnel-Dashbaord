@@ -16,6 +16,7 @@ const ALL_COMPANY_FIELDS = [
   'scrape_status', 'classification_reason', 'observations',
   'needs_manual_review', 'classified_at',
   'crunchbase_funding', 'crunchbase_funding_type', 'revenue_reo',
+  'sales_team_count',
   'parent_domain', 'is_sub_product', 'discard_reason', 'discard_step',
   'is_nonprofit', 'icp_rerun_count', 'last_icp_method',
 ];
@@ -247,7 +248,7 @@ export async function getCompanies(funnelId: number | null, filters: Record<stri
     'c.total_funding', 'c.annual_revenue', 'c.icp_decision', 'c.category',
     'c.confidence', 'c.company_classification', 'c.founded_year',
     'c.created_at', 'c.updated_at', 'c.classified_at',
-    'c.crunchbase_funding', 'c.revenue_reo', 'c.discard_reason', 'c.id',
+    'c.crunchbase_funding', 'c.revenue_reo', 'c.sales_team_count', 'c.discard_reason', 'c.id',
   ];
   const safeSortBy    = validSortCols.includes(sortBy) ? sortBy : 'c.company_name';
   const safeSortOrder = sortOrder === 'desc' ? 'DESC' : 'ASC';

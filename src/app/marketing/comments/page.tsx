@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PipelineProgress } from '@/components/pipeline-progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,9 @@ import {
   Briefcase,
   ArrowUpDown,
   BarChart3,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -132,6 +136,8 @@ export default function CommentIntelPage() {
   const [newPostUrl, setNewPostUrl] = useState('');
   const [newPostTitle, setNewPostTitle] = useState('');
   const [showAddPost, setShowAddPost] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<number | null>(null);
+  const [editingPostTitle, setEditingPostTitle] = useState('');
 
   // Scraping
   const [scrapePostId, setScrapePostId] = useState<number | null>(null);
@@ -154,6 +160,24 @@ export default function CommentIntelPage() {
   // Enrichment
   const [isEnriching, setIsEnriching] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
+  const [activeFunnelId, setActiveFunnelId] = useState<number | null>(null);
+
+  const [pipelineState, setPipelineState] = useState<{
+    status: 'idle' | 'running' | 'stopping' | 'completed' | 'error';
+    completed: number;
+    total: number;
+    currentDomain: string;
+    errors: string[];
+  }>({
+    status: 'idle',
+    completed: 0,
+    total: 0,
+    currentDomain: '',
+    errors: []
+  });
+
+  const stopRef = useRef(false);
+  const drivingRef = useRef(false);
 
   // ── Data fetching ──────────────────────────────────────────────────
 
@@ -268,6 +292,22 @@ export default function CommentIntelPage() {
     }
   };
 
+  const handleEditPostSubmit = async (postId: number) => {
+    try {
+      const res = await fetch('/api/comments/posts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: postId, post_title: editingPostTitle.trim() || null }),
+      });
+      if (!res.ok) throw new Error('Failed to update title');
+      toast.success('Title updated');
+      setEditingPostId(null);
+      fetchPosts();
+    } catch {
+      toast.error('Failed to update title');
+    }
+  };
+
   const handleScrape = async () => {
     if (!scrapePostId || !html.trim()) return;
     setIsScraping(true);
@@ -319,9 +359,85 @@ export default function CommentIntelPage() {
     }
   };
 
+  const drive = useCallback(async (funnelId: number) => {
+    if (drivingRef.current) return;
+    drivingRef.current = true;
+    stopRef.current = false;
+    setPipelineState(prev => ({ ...prev, status: 'running' }));
+
+    try {
+      while (!stopRef.current) {
+        const res = await fetch('/api/classify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ funnel_id: funnelId }),
+        });
+        const data = await res.json();
+        
+        if (!res.ok) {
+          toast.error('Classification error', { description: data.error });
+          setPipelineState(prev => ({ ...prev, status: 'error' }));
+          break;
+        }
+        
+        setPipelineState(prev => ({
+          status: data.done ? 'idle' : 'running',
+          completed: data.completed ?? prev.completed,
+          total: data.total ?? prev.total,
+          currentDomain: '',
+          errors: [...prev.errors, ...(data.errors || [])].slice(-50),
+        }));
+        
+        if (data.done) {
+          if (!data.stopped) {
+            toast.success('Classification complete', { description: 'Syncing results back to profiles...' });
+            // Sync the ICP results back to the profiles
+            try {
+              await fetch('/api/comments/classify/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ campaign_tag: selectedCampaign }),
+              });
+              toast.success('Sync complete');
+              refreshAll();
+            } catch (syncErr) {
+              toast.error('Sync failed', { description: (syncErr as Error).message });
+            }
+          }
+          break;
+        }
+      }
+    } catch (error) {
+      toast.error('Pipeline error', { description: (error as Error).message });
+      setPipelineState(prev => ({ ...prev, status: 'error' }));
+    } finally {
+      drivingRef.current = false;
+      setIsClassifying(false);
+      if (!stopRef.current) {
+        setPipelineState(prev => ({ ...prev, status: 'idle' }));
+      }
+    }
+  }, [selectedCampaign, refreshAll]);
+
+  const stopPipeline = async () => {
+    stopRef.current = true;
+    setPipelineState(prev => ({ ...prev, status: 'idle' }));
+    if (activeFunnelId) {
+      try {
+        await fetch('/api/classify/stop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ funnel_id: activeFunnelId }),
+        });
+      } catch { /* best-effort */ }
+    }
+    toast.info('Classification stopped.');
+  };
+
   const handleRunIcp = async () => {
     if (!selectedCampaign) return;
     setIsClassifying(true);
+    setPipelineState(prev => ({ ...prev, errors: [] }));
     try {
       const res = await fetch('/api/comments/classify', {
         method: 'POST',
@@ -332,9 +448,38 @@ export default function CommentIntelPage() {
       if (!res.ok) throw new Error(data.error);
 
       toast.success(data.message || 'Classification started');
+      
+      if (data.funnel_id) {
+        if (data.unclassified_to_process > 0) {
+          setActiveFunnelId(data.funnel_id);
+          setPipelineState(prev => ({ 
+            ...prev, 
+            status: 'running',
+            total: data.unclassified_to_process,
+            completed: 0 
+          }));
+          // Start the client-driven loop
+          drive(data.funnel_id);
+        } else {
+          toast.info('Companies already classified', { description: 'Syncing results to profiles...' });
+          try {
+            await fetch('/api/comments/classify/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ campaign_tag: selectedCampaign }),
+            });
+            toast.success('Sync complete');
+            refreshAll();
+          } catch (syncErr) {
+            toast.error('Sync failed', { description: (syncErr as Error).message });
+          }
+          setIsClassifying(false);
+        }
+      } else {
+        setIsClassifying(false);
+      }
     } catch (err) {
       toast.error('Classification failed', { description: (err as Error).message });
-    } finally {
       setIsClassifying(false);
     }
   };
@@ -455,6 +600,11 @@ export default function CommentIntelPage() {
         </div>
       )}
 
+      {/* Pipeline Progress */}
+      {pipelineState.status !== 'idle' && (
+        <PipelineProgress {...pipelineState} onStop={stopPipeline} />
+      )}
+
       {/* Main Tabs (shown when campaign is selected) */}
       {selectedCampaign && (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -551,7 +701,40 @@ export default function CommentIntelPage() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium truncate">{post.post_title || 'Untitled Post'}</span>
+                          {editingPostId === post.id ? (
+                            <div className="flex items-center gap-2 flex-1 max-w-sm">
+                              <input
+                                type="text"
+                                value={editingPostTitle}
+                                onChange={e => setEditingPostTitle(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') handleEditPostSubmit(post.id);
+                                  if (e.key === 'Escape') setEditingPostId(null);
+                                }}
+                                className="bg-muted/30 border border-border rounded-md text-sm px-2 py-1 outline-none focus:border-primary/50 w-full"
+                                autoFocus
+                              />
+                              <Button size="icon" variant="ghost" className="h-6 w-6 text-emerald-500 shrink-0" onClick={() => handleEditPostSubmit(post.id)}>
+                                <Check className="w-3 h-3" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground shrink-0" onClick={() => setEditingPostId(null)}>
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="text-sm font-medium truncate flex items-center gap-2">
+                                {post.post_title || 'Untitled Post'}
+                                <button
+                                  onClick={() => { setEditingPostId(post.id); setEditingPostTitle(post.post_title || ''); }}
+                                  className="text-muted-foreground/50 hover:text-foreground transition-colors"
+                                  title="Edit Post Title"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                              </span>
+                            </>
+                          )}
                           {post.last_scraped && (
                             <Badge variant="secondary" className="text-[9px] shrink-0">
                               Last scraped: {new Date(post.last_scraped).toLocaleDateString()}
@@ -620,7 +803,22 @@ export default function CommentIntelPage() {
                   className="bg-muted/30 border border-border rounded-lg text-xs pl-9 pr-3 py-2 w-72 outline-none focus:border-primary/50"
                 />
               </div>
-              <span className="text-xs text-muted-foreground">{commentTotal} total comments</span>
+              <div className="flex items-center gap-4">
+                <span className="text-xs text-muted-foreground">{commentTotal} total comments</span>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="h-8 text-xs"
+                  onClick={() => {
+                    if (selectedCampaign) {
+                      window.open(`/api/comments/export?campaign=${encodeURIComponent(selectedCampaign)}`, '_blank');
+                    }
+                  }}
+                >
+                  <Download className="w-3.5 h-3.5 mr-2" />
+                  Export CSV
+                </Button>
+              </div>
             </div>
 
             <div className="bg-card border border-border rounded-xl overflow-hidden">

@@ -17,7 +17,7 @@ export function pool(): Pool {
   _pool = new Pool({
     host:     parsed.hostname,
     port:     parseInt(parsed.port || '5432'),
-    database: parsed.pathname.replace(/^\/+/, ''),
+    database: parsed.pathname.startsWith('/') ? parsed.pathname.slice(1) : parsed.pathname,
     user:     decodeURIComponent(parsed.username),
     password: decodeURIComponent(parsed.password),
     ssl:      { rejectUnauthorized: false },

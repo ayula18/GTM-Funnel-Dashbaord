@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { ensureCommentTables, createPost, getPostsByCampaign, deletePost, getAllCampaignTags } from '@/lib/db';
+import { ensureCommentTables, createPost, getPostsByCampaign, deletePost, getAllCampaignTags, updatePostTitle } from '@/lib/db';
 
 export async function GET(request: Request) {
   try {
@@ -50,6 +50,22 @@ export async function DELETE(request: Request) {
     }
 
     await deletePost(parseInt(postId));
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, post_title } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'id required' }, { status: 400 });
+    }
+
+    await updatePostTitle(parseInt(id), post_title);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
