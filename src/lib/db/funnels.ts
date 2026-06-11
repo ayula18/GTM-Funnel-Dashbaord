@@ -192,7 +192,8 @@ export async function getFunnelDailyInsights(funnelId: number) {
     SELECT
       DATE(c.created_at) as date,
       COUNT(*) as total_checked,
-      COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4}) as icps
+      COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4} AND c.is_netnew = 1 AND c.company_classification IN ('DevTool', 'DevTools')) as icps_devtool,
+      COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4} AND c.is_netnew = 1 AND c.company_classification = 'IT Services & Solutions') as icps_it
     FROM funnel_companies fc
     JOIN companies c ON fc.company_id = c.id
     WHERE fc.funnel_id = $1 AND c.merged_into_id IS NULL
@@ -203,6 +204,7 @@ export async function getFunnelDailyInsights(funnelId: number) {
   return rows.map((r: any) => ({
     date: r.date,
     total_checked: Number(r.total_checked),
-    icps: Number(r.icps),
+    icps_devtool: Number(r.icps_devtool),
+    icps_it: Number(r.icps_it),
   }));
 }

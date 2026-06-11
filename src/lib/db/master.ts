@@ -1,4 +1,5 @@
 import { qp, withTx } from './core';
+import { extractRootName, isExactRootMatch } from '../domain-utils';
 
 // ── Master ICP ────────────────────────────────────────────────────────
 
@@ -7,8 +8,22 @@ export async function addMasterIcp(domain: string, companyName?: string) {
 }
 
 export async function isInMasterIcp(domain: string): Promise<boolean> {
-  const rows = await qp('SELECT 1 FROM master_icp WHERE domain = $1', [domain]);
-  return rows.length > 0;
+  const root = extractRootName(domain);
+  if (!root || root.length < 3) {
+    const rows = await qp('SELECT 1 FROM master_icp WHERE domain = $1', [domain]);
+    return rows.length > 0;
+  }
+  
+  // Fetch candidates that share the same root string
+  const rows = await qp('SELECT domain FROM master_icp WHERE domain LIKE $1', [`%${root}%`]);
+  
+  for (const row of rows) {
+    if (isExactRootMatch(row.domain as string, domain)) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 export async function getMasterIcpCount(): Promise<number> {

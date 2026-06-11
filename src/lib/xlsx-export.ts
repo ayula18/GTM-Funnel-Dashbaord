@@ -28,6 +28,7 @@ const LABELS: Record<string, string> = {
   observations: 'Observations', discard_reason: 'Discard Reason', discard_step: 'Discard Step',
   sales_team_count: 'Sales Team', manual_gtm_bucket: 'Manual Bucket', 
   manual_gtm_reason: 'Manual Reason', funnel_names: 'Funnel Sources',
+  gtm_bucket: 'GTM Bucket (Computed)',
 };
 const label = (k: string) => LABELS[k] || k;
 
@@ -53,6 +54,12 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
     page: 1, per_page: 100000, sort_by: 'c.company_name', sort_order: 'asc',
   });
   const companies = data as Row[];
+  
+  // Compute dynamic buckets before rendering
+  companies.forEach(c => {
+    c.gtm_bucket = getBucketId(c);
+  });
+
   const steps = await getFunnelSteps(funnelId) as unknown as FunnelSteps;
 
   const wb = new ExcelJS.Workbook();
@@ -85,6 +92,7 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
     'total_funding', 'crunchbase_funding', 'annual_revenue', 'revenue_reo', 'founded_year',
     'company_linkedin_url',
     'icp_decision', 'company_classification', 'category', 'confidence', 'is_netnew', 'subsidiary_of',
+    'gtm_bucket', 'manual_gtm_bucket', 'manual_gtm_reason'
   ], companies);
 
   // 2) ICP Results — only companies that have been classified / decided
@@ -159,7 +167,7 @@ function buildInsightsSheet(wb: ExcelJS.Workbook, steps: FunnelSteps, dailyInsig
 
   ws.getCell('D4').value = 'Total';
   ws.getCell('E4').value = 'NetNew';
-  ws.getCell('F4').value = 'Is Devops?';
+  ws.getCell('F4').value = 'Is DevTool?';
   ws.getCell('G4').value = 'Is IT & Services';
   ws.getRow(4).font = { bold: true };
   ws.getRow(4).alignment = { horizontal: 'center', vertical: 'middle' };
@@ -199,7 +207,8 @@ function buildInsightsSheet(wb: ExcelJS.Workbook, steps: FunnelSteps, dailyInsig
   // Daily Insights Section
   const startRow = 8;
   ws.getCell(`B${startRow}`).value = 'Total Domains checked';
-  ws.getCell(`C${startRow}`).value = '#ICPs*';
+  ws.getCell(`C${startRow}`).value = 'Is DevTool?*';
+  ws.getCell(`D${startRow}`).value = 'Is IT & Services*';
   
   const headerRow = ws.getRow(startRow);
   headerRow.font = { bold: true };
@@ -208,35 +217,38 @@ function buildInsightsSheet(wb: ExcelJS.Workbook, steps: FunnelSteps, dailyInsig
 
   let currentRow = startRow + 1;
   let sumDomains = 0;
-  let sumIcps = 0;
+  let sumIcpsDevTool = 0;
+  let sumIcpsIT = 0;
 
   for (const insight of dailyInsights) {
-    // Format date as "Till 5 June 2026" or similar if needed. For now just format nicely.
     const dateStr = insight.date instanceof Date 
       ? insight.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
       : String(insight.date);
 
     ws.getCell(`A${currentRow}`).value = dateStr;
     ws.getCell(`B${currentRow}`).value = insight.total_checked;
-    ws.getCell(`C${currentRow}`).value = insight.icps;
+    ws.getCell(`C${currentRow}`).value = insight.icps_devtool;
+    ws.getCell(`D${currentRow}`).value = insight.icps_it;
     ws.getRow(currentRow).alignment = { horizontal: 'center', vertical: 'middle' };
     
     sumDomains += insight.total_checked;
-    sumIcps += insight.icps;
+    sumIcpsDevTool += insight.icps_devtool;
+    sumIcpsIT += insight.icps_it;
     currentRow++;
   }
 
   // Empty row before total if needed, but screenshot shows it right after
   ws.getCell(`A${currentRow}`).value = 'Total';
   ws.getCell(`B${currentRow}`).value = sumDomains;
-  ws.getCell(`C${currentRow}`).value = sumIcps;
+  ws.getCell(`C${currentRow}`).value = sumIcpsDevTool;
+  ws.getCell(`D${currentRow}`).value = sumIcpsIT;
   const totalRow = ws.getRow(currentRow);
   totalRow.font = { bold: true };
   totalRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
   // Add borders to the second table
   for (let r = startRow; r <= currentRow; r++) {
-    for (let c = 1; c <= 3; c++) {
+    for (let c = 1; c <= 4; c++) {
       if (r === startRow && c === 1) continue; // Top left is blank
       const cell = ws.getCell(r, c);
       cell.border = {
@@ -249,7 +261,7 @@ function buildInsightsSheet(wb: ExcelJS.Workbook, steps: FunnelSteps, dailyInsig
   }
 
   currentRow++;
-  ws.mergeCells(`A${currentRow}:C${currentRow}`);
+  ws.mergeCells(`A${currentRow}:D${currentRow}`);
   const footer = ws.getCell(`A${currentRow}`);
   footer.value = '* Developer focussed companies > 1 emp, Note funding data not checked for this yet';
   footer.font = { size: 10 };
@@ -273,6 +285,9 @@ function buildSummarySheet(wb: ExcelJS.Workbook, funnel: Row, steps: FunnelSteps
   const kv = (k: string, v: unknown) => { ws.addRow([k, Number(v) || 0]); };
 
   section('Overview');
+  const overviewNote = ws.addRow(['(Raw aggregate counts for all imported domains in the database)']);
+  overviewNote.font = { italic: true, size: 10, color: { argb: 'FF666666' } };
+  
   kv('Total companies', funnel.total_companies);
   kv('Classified', funnel.classified);
   kv('Unclassified', funnel.unclassified);
@@ -283,6 +298,9 @@ function buildSummarySheet(wb: ExcelJS.Workbook, funnel: Row, steps: FunnelSteps
   ws.addRow([]);
 
   section('Funnel Steps');
+  const funnelNote = ws.addRow(['(Sequential survival gauntlet: a company MUST pass Step N to reach Step N+1)']);
+  funnelNote.font = { italic: true, size: 10, color: { argb: 'FF666666' } };
+  
   const stepHeader = ws.addRow(['Step', 'Passed', 'Dropped']);
   stepHeader.font = { bold: true };
   ws.addRow(['1 · Raw Import', steps.step1_raw, '']);

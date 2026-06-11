@@ -400,12 +400,25 @@ export async function parseMasterIcpCsv(csvContent: string): Promise<{ imported:
 
   // Retroactively sync is_netnew for any existing companies that match the new master list
   try {
-    await qp(`
-      UPDATE companies c
-      SET is_netnew = 0
-      FROM master_icp m
-      WHERE c.domain = m.domain AND c.is_netnew = 1
-    `);
+    const { isExactRootMatch } = await import('./domain-utils');
+    const masterRes = await qp('SELECT domain FROM master_icp');
+    const masterDomains = masterRes.map((r: any) => r.domain as string);
+
+    const netnewRes = await qp('SELECT id, domain FROM companies WHERE is_netnew = 1');
+    const toUpdate: number[] = [];
+
+    for (const c of netnewRes) {
+      for (const mDomain of masterDomains) {
+        if (isExactRootMatch(c.domain as string, mDomain)) {
+          toUpdate.push(c.id as number);
+          break;
+        }
+      }
+    }
+
+    if (toUpdate.length > 0) {
+      await qp('UPDATE companies SET is_netnew = 0 WHERE id = ANY($1::int[])', [toUpdate]);
+    }
   } catch (err) {
     errors.push(`Failed to sync is_netnew flags: ${(err as Error).message}`);
   }

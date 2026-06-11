@@ -243,6 +243,28 @@ export function sharesRoot(d1: string, d2: string): boolean {
 }
 
 /**
+ * STRICT root matching. ONLY returns true if the extracted roots are exactly identical.
+ * Safe for fully automated decisions (like NetNew checking) where we cannot afford false positives.
+ * 
+ * Examples:
+ *   isExactRootMatch("dataloop.io", "dataloop.ai") → true ("dataloop" === "dataloop")
+ *   isExactRootMatch("box.com", "dropbox.com") → false ("box" !== "dropbox")
+ */
+export function isExactRootMatch(d1: string, d2: string): boolean {
+  if (!d1 || !d2) return false;
+  
+  const n1 = normalizeDomain(d1);
+  const n2 = normalizeDomain(d2);
+  if (n1 === n2) return true;
+  
+  const r1 = extractRootName(n1);
+  const r2 = extractRootName(n2);
+  
+  if (!r1 || !r2 || r1.length < 3 || r2.length < 3) return false;
+  return r1 === r2;
+}
+
+/**
  * Find the best matching domain from a list for a given input domain.
  * Returns the matching domain or null.
  */
