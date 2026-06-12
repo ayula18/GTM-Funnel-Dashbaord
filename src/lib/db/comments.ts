@@ -363,7 +363,8 @@ export async function getCommentsByCampaign(
      FROM linkedin_comments c
      JOIN linkedin_posts p ON p.id = c.post_id
      JOIN linkedin_profiles pr ON pr.id = c.profile_id
-     LEFT JOIN customers cust ON pr.enriched_company_domain = cust.domain
+     LEFT JOIN companies comp ON comp.id = pr.company_id
+     LEFT JOIN customers cust ON COALESCE(pr.enriched_company_domain, comp.domain) = cust.domain
      ${where}`,
     params
   );
@@ -378,14 +379,15 @@ export async function getCommentsByCampaign(
             pr.headline AS profile_headline,
             pr.profile_url,
             pr.icp_status,
-            pr.enriched_company_name,
+            COALESCE(pr.enriched_company_name, comp.company_name, pr.parsed_company) AS enriched_company_name,
             p.post_title,
             p.post_url,
             CASE WHEN cust.id IS NOT NULL THEN true ELSE false END as is_customer
      FROM linkedin_comments c
      JOIN linkedin_posts p ON p.id = c.post_id
      JOIN linkedin_profiles pr ON pr.id = c.profile_id
-     LEFT JOIN customers cust ON pr.enriched_company_domain = cust.domain
+     LEFT JOIN companies comp ON comp.id = pr.company_id
+     LEFT JOIN customers cust ON COALESCE(pr.enriched_company_domain, comp.domain) = cust.domain
      ${where}
      ORDER BY c.scraped_at DESC
      LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
@@ -403,8 +405,8 @@ export async function getCommentsForExport(campaignTag: string) {
         pr.headline AS "Headline",
         c.comment_text AS "Comment",
         pr.icp_status AS "ICP Status",
-        pr.enriched_company_name AS "Company",
-        pr.enriched_company_domain AS "Domain",
+        COALESCE(pr.enriched_company_name, comp.company_name, pr.parsed_company) AS "Company",
+        COALESCE(pr.enriched_company_domain, comp.domain) AS "Domain",
         pr.enriched_company_linkedin AS "Company LinkedIn",
         CASE WHEN cust.id IS NOT NULL THEN 'Yes' ELSE 'No' END AS "Is Customer?",
         p.post_title AS "Post Title",
@@ -413,7 +415,8 @@ export async function getCommentsForExport(campaignTag: string) {
      FROM linkedin_comments c
      JOIN linkedin_posts p ON p.id = c.post_id
      JOIN linkedin_profiles pr ON pr.id = c.profile_id
-     LEFT JOIN customers cust ON pr.enriched_company_domain = cust.domain
+     LEFT JOIN companies comp ON comp.id = pr.company_id
+     LEFT JOIN customers cust ON COALESCE(pr.enriched_company_domain, comp.domain) = cust.domain
      WHERE p.campaign_tag = $1
      ORDER BY c.scraped_at DESC`,
     [campaignTag]
