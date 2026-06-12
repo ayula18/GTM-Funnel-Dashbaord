@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,24 +42,33 @@ export default function CustomersPage() {
   
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const perPage = 50;
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
+    setFetching(true);
     try {
-      const res = await fetch('/api/marketing/customers');
+      const params = new URLSearchParams({
+        page: String(page),
+        per_page: String(perPage),
+      });
+      if (search) params.set('search', search);
+
+      const res = await fetch(`/api/marketing/customers?${params}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setCustomers(data.customers || []);
+      setTotal(data.pagination?.total || 0);
     } catch (err) {
       toast.error('Failed to load customers', { description: errorMessage(err) });
     } finally {
       setFetching(false);
     }
-  };
+  }, [page, search]);
 
   useEffect(() => {
     fetchCustomers();
-  }, []);
+  }, [fetchCustomers]);
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +92,7 @@ export default function CustomersPage() {
       }
       setFile(null);
       setOpen(false);
+      setPage(1);
       fetchCustomers();
     } catch (error) {
       toast.error('Upload failed', { description: errorMessage(error) });
@@ -90,14 +100,6 @@ export default function CustomersPage() {
       setLoading(false);
     }
   };
-
-  const filtered = customers.filter(c => 
-    c.domain.toLowerCase().includes(search.toLowerCase()) || 
-    (c.company_name && c.company_name.toLowerCase().includes(search.toLowerCase()))
-  );
-  
-  const total = filtered.length;
-  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
   return (
     <div className="p-8 space-y-8">
@@ -164,7 +166,7 @@ export default function CustomersPage() {
               </div>
             </div>
             <div className="text-2xl font-bold tracking-tight">
-              {fetching ? '—' : formatNumber(customers.length)}
+              {fetching && page === 1 ? '—' : formatNumber(total)}
             </div>
             <div className="text-[10px] text-muted-foreground mt-0.5">Domains used for engagement filtering</div>
           </CardContent>
@@ -209,7 +211,7 @@ export default function CustomersPage() {
                       Loading...
                     </TableCell>
                   </TableRow>
-                ) : paginated.length === 0 ? (
+                ) : customers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="h-48 text-center text-muted-foreground">
                       <Database className="w-8 h-8 mx-auto mb-3 opacity-20" />
@@ -217,7 +219,7 @@ export default function CustomersPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginated.map((row, index) => {
+                  customers.map((row, index) => {
                     const srNo = (page - 1) * perPage + index + 1;
                     return (
                       <TableRow key={row.id}>

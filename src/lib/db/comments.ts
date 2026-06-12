@@ -212,43 +212,76 @@ export async function ingestScrape(
     duplicateComments: 0,
   };
 
+  if (profiles.length === 0) return result;
+
   await withTx(async (client) => {
+    // ── Step 1: Bulk upsert all profiles in one query ────────────────
+    const slugs: string[] = [];
+    const names: string[] = [];
+    const headlines: (string | null)[] = [];
+    const urls: string[] = [];
+    const images: (string | null)[] = [];
+    const companies: (string | null)[] = [];
+    const designations: (string | null)[] = [];
+
     for (const p of profiles) {
-      // Upsert profile
-      const profRows = await client.query(
-        `INSERT INTO linkedin_profiles (slug, name, headline, profile_url, profile_image, parsed_company, parsed_designation)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT (slug) DO UPDATE SET
-           name = COALESCE(NULLIF(EXCLUDED.name, ''), linkedin_profiles.name),
-           headline = COALESCE(NULLIF(EXCLUDED.headline, ''), linkedin_profiles.headline),
-           profile_image = COALESCE(NULLIF(EXCLUDED.profile_image, ''), linkedin_profiles.profile_image),
-           parsed_company = COALESCE(NULLIF(EXCLUDED.parsed_company, ''), linkedin_profiles.parsed_company),
-           parsed_designation = COALESCE(NULLIF(EXCLUDED.parsed_designation, ''), linkedin_profiles.parsed_designation),
-           updated_at = NOW()
-         RETURNING id, (xmax = 0) AS was_insert`,
-        [p.slug, p.name, p.headline || null, p.url, p.profile_image || null, p.parsed_company || null, p.parsed_designation || null]
-      );
-
-      const profileId = profRows.rows[0].id;
-      if (profRows.rows[0].was_insert) result.newProfiles++;
-
-      // Insert comment (dedup)
-      const commentResult = await client.query(
-        `INSERT INTO linkedin_comments (post_id, profile_id, comment_text, is_reply)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (post_id, profile_id, comment_text) DO NOTHING
-         RETURNING id`,
-        [postId, profileId, p.comment || null, p.is_reply]
-      );
-
-      if (commentResult.rows.length > 0) {
-        result.newComments++;
-      } else {
-        result.duplicateComments++;
-      }
+      slugs.push(p.slug);
+      names.push(p.name);
+      headlines.push(p.headline || null);
+      urls.push(p.url);
+      images.push(p.profile_image || null);
+      companies.push(p.parsed_company || null);
+      designations.push(p.parsed_designation || null);
     }
 
-    // Update last_scraped timestamp
+    const profileResult = await client.query(
+      `INSERT INTO linkedin_profiles (slug, name, headline, profile_url, profile_image, parsed_company, parsed_designation)
+       SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[])
+       ON CONFLICT (slug) DO UPDATE SET
+         name = COALESCE(NULLIF(EXCLUDED.name, ''), linkedin_profiles.name),
+         headline = COALESCE(NULLIF(EXCLUDED.headline, ''), linkedin_profiles.headline),
+         profile_image = COALESCE(NULLIF(EXCLUDED.profile_image, ''), linkedin_profiles.profile_image),
+         parsed_company = COALESCE(NULLIF(EXCLUDED.parsed_company, ''), linkedin_profiles.parsed_company),
+         parsed_designation = COALESCE(NULLIF(EXCLUDED.parsed_designation, ''), linkedin_profiles.parsed_designation),
+         updated_at = NOW()
+       RETURNING id, slug, (xmax = 0) AS was_insert`,
+      [slugs, names, headlines, urls, images, companies, designations]
+    );
+
+    // Build slug → id map
+    const slugToId = new Map<string, number>();
+    for (const row of profileResult.rows) {
+      slugToId.set(row.slug, row.id);
+      if (row.was_insert) result.newProfiles++;
+    }
+
+    // ── Step 2: Bulk insert all comments in one query ────────────────
+    const cPostIds: number[] = [];
+    const cProfileIds: number[] = [];
+    const cTexts: (string | null)[] = [];
+    const cReplies: boolean[] = [];
+
+    for (const p of profiles) {
+      const profileId = slugToId.get(p.slug);
+      if (!profileId) continue;
+      cPostIds.push(postId);
+      cProfileIds.push(profileId);
+      cTexts.push(p.comment || null);
+      cReplies.push(p.is_reply);
+    }
+
+    const commentResult = await client.query(
+      `INSERT INTO linkedin_comments (post_id, profile_id, comment_text, is_reply)
+       SELECT * FROM UNNEST($1::int[], $2::int[], $3::text[], $4::bool[])
+       ON CONFLICT (post_id, profile_id, comment_text) DO NOTHING
+       RETURNING id`,
+      [cPostIds, cProfileIds, cTexts, cReplies]
+    );
+
+    result.newComments = commentResult.rows.length;
+    result.duplicateComments = profiles.length - result.newComments;
+
+    // ── Step 3: Update last_scraped ──────────────────────────────────
     await client.query(
       `UPDATE linkedin_posts SET last_scraped = NOW() WHERE id = $1`,
       [postId]
@@ -534,12 +567,44 @@ export async function getCampaignCommentStats(campaignTag: string): Promise<Camp
 }
 
 export async function getAllCampaignCommentStats(): Promise<CampaignCommentStats[]> {
-  const tags = await getAllCampaignTags();
-  const results: CampaignCommentStats[] = [];
-  for (const tag of tags) {
-    results.push(await getCampaignCommentStats(tag));
-  }
-  return results;
+  const rows = await qp<{
+    campaign_tag: string;
+    total_comments: string;
+    unique_profiles: string;
+    icp_profiles: string;
+    non_icp_profiles: string;
+    pending_profiles: string;
+    enriched_profiles: string;
+  }>(
+    `SELECT
+       p.campaign_tag,
+       COUNT(c.id) AS total_comments,
+       COUNT(DISTINCT pr.id) AS unique_profiles,
+       COUNT(DISTINCT CASE WHEN LOWER(pr.icp_status) IN ('yes', 'true') THEN pr.id END) AS icp_profiles,
+       COUNT(DISTINCT CASE WHEN LOWER(pr.icp_status) IN ('no', 'false') THEN pr.id END) AS non_icp_profiles,
+       COUNT(DISTINCT CASE WHEN pr.enriched_company_domain IS NULL THEN pr.id END) AS pending_profiles,
+       COUNT(DISTINCT CASE WHEN pr.enriched_company_domain IS NOT NULL THEN pr.id END) AS enriched_profiles
+     FROM linkedin_comments c
+     JOIN linkedin_posts p ON p.id = c.post_id
+     JOIN linkedin_profiles pr ON pr.id = c.profile_id
+     GROUP BY p.campaign_tag
+     ORDER BY p.campaign_tag`
+  );
+
+  return rows.map(r => {
+    const unique = parseInt(r.unique_profiles || '0');
+    const icp = parseInt(r.icp_profiles || '0');
+    return {
+      campaign_tag: r.campaign_tag,
+      total_comments: parseInt(r.total_comments || '0'),
+      unique_profiles: unique,
+      icp_profiles: icp,
+      non_icp_profiles: parseInt(r.non_icp_profiles || '0'),
+      pending_profiles: parseInt(r.pending_profiles || '0'),
+      enriched_profiles: parseInt(r.enriched_profiles || '0'),
+      icp_rate: unique > 0 ? (icp / unique) * 100 : 0,
+    };
+  });
 }
 
 // ── Get enriched domains for ICP classification ───────────────────────

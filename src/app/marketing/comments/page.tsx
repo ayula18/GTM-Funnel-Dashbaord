@@ -192,7 +192,7 @@ export default function CommentIntelPage() {
       const res = await fetch('/api/comments/posts');
       const data = await res.json();
       setCampaignTags(data.campaigns || []);
-    } catch { /* ignore */ }
+    } catch (err) { toast.error('Failed to load campaigns', { description: (err as Error).message }); }
   }, []);
 
   const fetchPosts = useCallback(async () => {
@@ -201,7 +201,7 @@ export default function CommentIntelPage() {
       const res = await fetch(`/api/comments/posts?campaign=${encodeURIComponent(selectedCampaign)}`);
       const data = await res.json();
       setPosts(data.posts || []);
-    } catch { /* ignore */ }
+    } catch (err) { toast.error('Failed to load posts', { description: (err as Error).message }); }
   }, [selectedCampaign]);
 
   const fetchProfiles = useCallback(async () => {
@@ -215,7 +215,7 @@ export default function CommentIntelPage() {
       const res = await fetch(`/api/comments/profiles?${params}`);
       const data = await res.json();
       setProfiles(data.profiles || []);
-    } catch { /* ignore */ }
+    } catch (err) { toast.error('Failed to load profiles', { description: (err as Error).message }); }
   }, [selectedCampaign, profileTab, searchQuery]);
 
   const fetchComments = useCallback(async () => {
@@ -236,7 +236,7 @@ export default function CommentIntelPage() {
       const data = await res.json();
       setComments(data.comments || []);
       setCommentTotal(data.total || 0);
-    } catch { /* ignore */ }
+    } catch (err) { toast.error('Failed to load comments', { description: (err as Error).message }); }
   }, [selectedCampaign, searchQuery, filterCustomer, filterIcp, filterType, filterPost]);
 
   const fetchStats = useCallback(async () => {
@@ -245,20 +245,30 @@ export default function CommentIntelPage() {
       const res = await fetch(`/api/comments/profiles?campaign=${encodeURIComponent(selectedCampaign)}&view=stats`);
       const data = await res.json();
       setStats(data.stats || null);
-    } catch { /* ignore */ }
+    } catch (err) { toast.error('Failed to load stats', { description: (err as Error).message }); }
   }, [selectedCampaign]);
 
+  // refreshAll: always fetch posts + stats (lightweight), then only the active tab's data
   const refreshAll = useCallback(() => {
     fetchPosts();
-    fetchProfiles();
-    fetchComments();
     fetchStats();
-  }, [fetchPosts, fetchProfiles, fetchComments, fetchStats]);
+    if (activeTab === 'profiles' || activeTab === 'summary') fetchProfiles();
+    if (activeTab === 'comments') fetchComments();
+  }, [fetchPosts, fetchStats, fetchProfiles, fetchComments, activeTab]);
 
   useEffect(() => { fetchCampaigns(); }, [fetchCampaigns]);
-  useEffect(() => { if (selectedCampaign) refreshAll(); }, [selectedCampaign, refreshAll]);
-  useEffect(() => { fetchProfiles(); }, [profileTab, fetchProfiles]);
-  useEffect(() => { fetchComments(); }, [filterCustomer, filterIcp, filterType, filterPost, fetchComments]);
+  // On campaign change: fetch posts + stats, plus active tab data
+  useEffect(() => { if (selectedCampaign) refreshAll(); }, [selectedCampaign]); // eslint-disable-line react-hooks/exhaustive-deps
+  // On tab switch: fetch the tab's data if not already loaded
+  useEffect(() => {
+    if (!selectedCampaign) return;
+    if (activeTab === 'profiles' || activeTab === 'summary') fetchProfiles();
+    if (activeTab === 'comments') fetchComments();
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Profile tab filter change
+  useEffect(() => { if (selectedCampaign) fetchProfiles(); }, [profileTab]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Comment filter changes
+  useEffect(() => { if (selectedCampaign) fetchComments(); }, [filterCustomer, filterIcp, filterType, filterPost]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Handlers ───────────────────────────────────────────────────────
 
