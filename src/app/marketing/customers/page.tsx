@@ -108,12 +108,14 @@ export default function CustomersPage() {
         </div>
         <div className="flex gap-2">
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                Upload Customers
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </DialogTrigger>
+            <DialogTrigger
+              render={
+                <Button>
+                  Upload Customers
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              }
+            />
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Upload Customers</DialogTitle>

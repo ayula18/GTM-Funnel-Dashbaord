@@ -78,6 +78,7 @@ interface CommentRow {
   post_url: string;
   icp_status: string | null;
   enriched_company_name: string | null;
+  is_customer: boolean;
 }
 
 interface Stats {
@@ -816,7 +817,7 @@ export default function CommentIntelPage() {
                   />
                 </div>
                 
-                <Select value={filterCustomer} onValueChange={setFilterCustomer}>
+                <Select value={filterCustomer} onValueChange={(val) => setFilterCustomer(val || 'all')}>
                   <SelectTrigger className="w-36 h-9 text-xs bg-muted/30">
                     <SelectValue placeholder="Is Customer?" />
                   </SelectTrigger>
@@ -827,7 +828,7 @@ export default function CommentIntelPage() {
                   </SelectContent>
                 </Select>
 
-                <Select value={filterIcp} onValueChange={setFilterIcp}>
+                <Select value={filterIcp} onValueChange={(val) => setFilterIcp(val || 'all')}>
                   <SelectTrigger className="w-28 h-9 text-xs bg-muted/30">
                     <SelectValue placeholder="ICP" />
                   </SelectTrigger>
@@ -839,7 +840,7 @@ export default function CommentIntelPage() {
                   </SelectContent>
                 </Select>
 
-                <Select value={filterType} onValueChange={setFilterType}>
+                <Select value={filterType} onValueChange={(val) => setFilterType(val || 'all')}>
                   <SelectTrigger className="w-32 h-9 text-xs bg-muted/30">
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
@@ -850,7 +851,7 @@ export default function CommentIntelPage() {
                   </SelectContent>
                 </Select>
 
-                <Select value={filterPost} onValueChange={setFilterPost}>
+                <Select value={filterPost} onValueChange={(val) => setFilterPost(val || 'all')}>
                   <SelectTrigger className="w-48 h-9 text-xs bg-muted/30 truncate">
                     <SelectValue placeholder="Post" />
                   </SelectTrigger>
