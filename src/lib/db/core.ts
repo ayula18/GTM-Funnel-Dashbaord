@@ -9,11 +9,11 @@ export function pool(): Pool {
   if (!connStr) throw new Error('DATABASE_URL environment variable is not set');
 
   const parsed = new URL(connStr);
-  // Pool size must stay UNDER the Supabase pooler's client limit (session mode
-  // caps at ~15). For Vercel/serverless use the TRANSACTION pooler (port 6543),
-  // which releases each connection right after the statement so a small pool
-  // scales across many function instances. Override per-env with PG_POOL_MAX.
-  const maxClients = parseInt(process.env.PG_POOL_MAX || '2', 10);
+  // Pool size should stay modest for serverless. We use the Supabase TRANSACTION
+  // pooler (port 6543) which releases each connection right after the statement,
+  // so a small pool scales across many Vercel function instances.
+  // Override per-env with PG_POOL_MAX.
+  const maxClients = parseInt(process.env.PG_POOL_MAX || '3', 10);
   _pool = new Pool({
     host:     parsed.hostname,
     port:     parseInt(parsed.port || '5432'),
@@ -28,6 +28,10 @@ export function pool(): Pool {
     connectionTimeoutMillis: 5000,
     keepAlive:               true,   // keep the TCP socket alive across warm invocations
     allowExitOnIdle:         true,
+    // Supabase Transaction pooler (port 6543) does NOT support named prepared
+    // statements — every query must use the unnamed statement or we get
+    // "prepared statement already exists" errors under concurrent load.
+    statement_timeout:       30000,  // 30s hard cap per query
   });
   // A pool 'error' event on an idle client would otherwise crash the process —
   // swallow it; the next query just gets a fresh connection.
@@ -58,7 +62,11 @@ async function runQuery(text: string, values: unknown[]) {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= RETRY_BACKOFF.length; attempt++) {
     try {
-      return await pool().query(text, values);
+      // Use QueryConfig with no `name` so node-postgres uses the unnamed
+      // prepared statement. Supabase transaction pooler (port 6543) shares
+      // connections across clients — named statements leak across sessions
+      // and cause "prepared statement already exists" errors.
+      return await pool().query({ text, values });
     } catch (err) {
       lastErr = err;
       const msg = err instanceof Error ? err.message : String(err);

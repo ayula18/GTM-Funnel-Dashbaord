@@ -434,28 +434,49 @@ export async function enrichProfiles(
     icp_status?: string;
   }>,
 ): Promise<{ matched: number; updated: number }> {
+  if (updates.length === 0) return { matched: 0, updated: 0 };
+
+  // Bulk update in chunks of 500 using UNNEST — single SQL per chunk
+  const CHUNK = 500;
   let matched = 0;
   let updated = 0;
 
-  await withTx(async (client) => {
-    for (const u of updates) {
-      const result = await client.query(
-        `UPDATE linkedin_profiles SET
-           enriched_company_name = COALESCE($2, enriched_company_name),
-           enriched_company_domain = COALESCE($3, enriched_company_domain),
-           enriched_company_linkedin = COALESCE($4, enriched_company_linkedin),
-           icp_status = COALESCE($5, icp_status),
-           updated_at = NOW()
-         WHERE slug = $1
-         RETURNING id`,
-        [u.slug, u.enriched_company_name || null, u.enriched_company_domain || null, u.enriched_company_linkedin || null, u.icp_status || null]
-      );
-      if (result.rows.length > 0) {
-        matched++;
-        if (u.enriched_company_domain || u.enriched_company_name || u.icp_status) updated++;
-      }
+  for (let i = 0; i < updates.length; i += CHUNK) {
+    const chunk = updates.slice(i, i + CHUNK);
+    const slugs: string[] = [];
+    const names: (string | null)[] = [];
+    const domains: (string | null)[] = [];
+    const linkedins: (string | null)[] = [];
+    const icps: (string | null)[] = [];
+
+    for (const u of chunk) {
+      slugs.push(u.slug);
+      names.push(u.enriched_company_name || null);
+      domains.push(u.enriched_company_domain || null);
+      linkedins.push(u.enriched_company_linkedin || null);
+      icps.push(u.icp_status || null);
     }
-  });
+
+    const result = await qp<{ id: number }>(
+      `UPDATE linkedin_profiles AS lp SET
+         enriched_company_name     = COALESCE(bulk.name,     lp.enriched_company_name),
+         enriched_company_domain   = COALESCE(bulk.domain,   lp.enriched_company_domain),
+         enriched_company_linkedin = COALESCE(bulk.linkedin, lp.enriched_company_linkedin),
+         icp_status                = COALESCE(bulk.icp,      lp.icp_status),
+         updated_at = NOW()
+       FROM (
+         SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::text[])
+           AS t(slug, name, domain, linkedin, icp)
+       ) AS bulk
+       WHERE lp.slug = bulk.slug
+       RETURNING lp.id`,
+      [slugs, names, domains, linkedins, icps]
+    );
+
+    matched += result.length;
+    // Count rows that actually had meaningful data to write
+    updated += chunk.filter(u => u.enriched_company_domain || u.enriched_company_name || u.icp_status).length;
+  }
 
   return { matched, updated };
 }
