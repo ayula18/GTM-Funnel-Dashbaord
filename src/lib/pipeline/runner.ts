@@ -59,7 +59,7 @@ async function classifyOne(company: Record<string, unknown>, apiKey: string): Pr
 export async function processClassificationBatch(
   funnelId: number,
   apiKey: string,
-  budgetMs = 45_000,
+  budgetMs = 30_000,
 ): Promise<BatchResult> {
   const start = Date.now();
   const errors: string[] = [];

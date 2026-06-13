@@ -41,7 +41,9 @@ function mapHeaders(headers: string[]): Record<number, string> {
 
 function parseNumeric(value: string | null | undefined): number | null {
   if (!value || value.trim() === '' || value === 'N/A' || value === '-' || value === 'Not Found') return null;
-  const cleaned = value.replace(/[$,\s]/g, '').toLowerCase();
+  // Strip all non-numeric characters EXCEPT decimals, minus signs, and k/m/b multipliers.
+  // This handles currency symbols like €, £, ₹, etc. safely.
+  const cleaned = value.replace(/[^0-9.\-bmk]/gi, '').toLowerCase();
   let num = parseFloat(cleaned);
   if (isNaN(num)) return null;
   if (cleaned.includes('b')) num *= 1000000000;

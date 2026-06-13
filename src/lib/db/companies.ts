@@ -138,7 +138,7 @@ export const FACET_COLUMNS: Record<string, string> = {
  *   step 5 = funded or has revenue (>$100k)
  */
 export const FUNNEL_STEP_GATES: Record<number, string> = {
-  2: 'c.is_in_apollo = 1',
+  2: '(c.is_in_apollo = 1 OR c.crunchbase_funding IS NOT NULL OR c.total_funding IS NOT NULL OR c.apollo_employees IS NOT NULL OR c.employee_reo IS NOT NULL)',
   3: '(COALESCE(c.employee_reo, 0) > 0 OR COALESCE(c.apollo_employees, 0) > 1)',
   4: "c.icp_decision = 'Yes'",
   5: '(GREATEST(COALESCE(c.total_funding, 0), COALESCE(c.crunchbase_funding, 0)) > 100000 OR GREATEST(COALESCE(c.annual_revenue, 0), COALESCE(c.revenue_reo, 0)) > 100000)',
