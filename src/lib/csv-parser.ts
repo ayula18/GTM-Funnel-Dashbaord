@@ -208,176 +208,28 @@ export async function parseAndImportCsv(
   onProgress?.(0, totalRows);
 
   for (const chunk of chunks) {
-    const pending: BatchChangeRow[] = [];
-    const pendingDecisions: MatchDecisionRow[] = [];
-
-    await Promise.all(chunk.map(async (row) => {
-      if (!row || row.length < 1) return;
-
-      result.total_rows++;
-
-      try {
-        let rawDomain = domainColIdx !== undefined ? row[parseInt(domainColIdx)] : '';
-        if (!rawDomain && websiteColIdx !== undefined) {
-          rawDomain = row[parseInt(websiteColIdx)];
-        }
-
-        if (!rawDomain || rawDomain.trim().length < 3) return;
-
-        const domain = normalizeDomain(rawDomain);
-        if (!domain || domain.length < 4 || !domain.includes('.')) return;
-
-        if (seenDomains.has(domain)) {
-          result.duplicates_skipped++;
-          return;
-        }
-        seenDomains.add(domain);
-
-        const companyData: Record<string, unknown> = { domain };
-
-        for (const [colIdx, field] of Object.entries(columnMapping)) {
-          const value = row[parseInt(colIdx)]?.trim();
-          if (!value || value === '') continue;
-
-          switch (field) {
-            case 'domain':
-            case 'website':
-              if (field === 'website') companyData.website = value;
-              break;
-            case 'apollo_employees':
-            case 'employee_reo':
-            case 'crunchbase_employees':
-            case 'total_funding':
-            case 'latest_funding_amount':
-            case 'annual_revenue':
-            case 'founded_year':
-            case 'crunchbase_funding':
-            case 'revenue_reo':
-            case 'sales_team_count':
-              companyData[field] = parseNumeric(value);
-              break;
-            case 'is_in_apollo':
-            case 'needs_manual_review':
-            case 'is_nonprofit':
-              companyData[field] = parseBoolean(value) ? 1 : 0;
-              break;
-            case 'is_netnew':
-              break; // Computed, not imported
-            case 'company_name':
-              // Never store placeholder names ("Unknown", "N/A", …) — they
-              // pollute the data and become false duplicate-matching keys.
-              if (!isJunkName(value)) companyData.company_name = value;
-              break;
-            default:
-              companyData[field] = value;
-          }
-        }
-
-        if (!companyData.website) {
-          companyData.website = `https://${domain}`;
-        }
-
-        if (result.source_type === 'apollo') {
-          companyData.is_in_apollo = 1;
-        }
-
-        // Check NetNew status
-        const inMaster = await isInMasterIcp(domain);
-        companyData.is_netnew = inMaster ? 0 : 1;
-
-        // ── Smart Domain Resolution ──────────────────────────────────────
-        const smartMatch = await findCompanyByDomainSmart(
-          domain,
-          companyData.company_name as string | undefined,
-          companyData.company_linkedin_url as string | undefined,
-        );
-
-        const upsertOpts = { source: result.source_type };
-        let up: UpsertResult;
-
-        // SAFETY: only an EXACT domain/alias match auto-enriches the existing
-        // company. Anything less certain (same root but different TLD, core
-        // root, LinkedIn, or name match) is NEVER auto-merged — it's imported as
-        // a SEPARATE company and queued in the Duplicates tab for manual
-        // approve/decline. One wrong auto-merge would corrupt the dashboard.
-        if (smartMatch && smartMatch.confidence === 'exact') {
-          companyData.domain = smartMatch.domain;
-          up = await upsertCompanyTracked(companyData, upsertOpts);
-
-          // Log: auto-enriched via exact match
-          pendingDecisions.push({
-            batch_id: batchId, input_domain: domain,
-            matched_domain: smartMatch.domain, company_id: up.id,
-            match_method: smartMatch.matchType,
-            match_detail: domain === smartMatch.domain ? null : `${domain} → ${smartMatch.domain}`,
-            confidence: 'exact',
-          });
-        } else if (smartMatch) {
-          up = await upsertCompanyTracked(companyData, upsertOpts);
-          await createMergeCandidate(
-            smartMatch.id,
-            up.id,
-            smartMatch.matchType,
-            `${domain} ↔ ${smartMatch.domain} (${smartMatch.matchType})`,
-            smartMatch.confidence,
-          );
-          result.domain_conflicts++;
-
-          // Log: created separate + merge candidate
-          pendingDecisions.push({
-            batch_id: batchId, input_domain: domain,
-            matched_domain: smartMatch.domain, company_id: up.id,
-            match_method: 'merge_candidate',
-            match_detail: `${domain} ↔ ${smartMatch.domain} via ${smartMatch.matchType}`,
-            confidence: smartMatch.confidence,
-          });
-        } else {
-          up = await upsertCompanyTracked(companyData, upsertOpts);
-
-          // Log: new company, no match found
-          pendingDecisions.push({
-            batch_id: batchId, input_domain: domain,
-            matched_domain: null, company_id: up.id,
-            match_method: 'new_insert',
-            match_detail: null,
-            confidence: 'none',
-          });
-        }
-
-        const companyId = up.id;
-
-        await linkCompanyToFunnel(companyId, funnelId);
-
-        const rootName = extractRootName(domain);
-        await addDomainAlias(companyId, domain, rootName, result.source_type, up.wasInsert);
-
-        // Audit + summary from what was ACTUALLY written (post-policy).
-        for (const c of up.applied) {
-          pending.push({ company_id: companyId, was_insert: up.wasInsert, field: c.field, old_value: c.old_value, new_value: c.new_value });
-          result.fields_updated[c.field] = (result.fields_updated[c.field] || 0) + 1;
-        }
-        for (const s of up.skipped) {
-          result.skipped_fields[s] = (result.skipped_fields[s] || 0) + 1;
-        }
-
-        const appliedNames = up.applied.map(c => c.field);
-        if (appliedNames.length > 0 && sourceFileName) {
-          await addDataSource(companyId, result.source_type, sourceFileName, appliedNames);
-        }
-
-        if (up.wasInsert) {
-          result.new_companies++;
-        } else {
-          result.matched_companies++;
-          result.updated_companies++;
-        }
-      } catch (err) {
-        result.errors.push(`Row: ${(err as Error).message}`);
-      }
-    }));
-
-    await recordFieldChanges(batchId, pending);
-    await recordMatchDecisions(pendingDecisions);
+    const batchStats = await processRowBatch({
+      rawRows: chunk,
+      columnMapping,
+      domainColIdx: domainColIdx !== undefined ? parseInt(domainColIdx) : undefined,
+      websiteColIdx: websiteColIdx !== undefined ? parseInt(websiteColIdx) : undefined,
+      sourceType: result.source_type,
+      funnelId,
+      batchId,
+      sourceFileName,
+      seenDomains,
+    });
+    result.total_rows        += batchStats.total_rows;
+    result.new_companies     += batchStats.new_companies;
+    result.matched_companies += batchStats.matched_companies;
+    result.updated_companies += batchStats.updated_companies;
+    result.duplicates_skipped += batchStats.duplicates_skipped;
+    result.domain_conflicts  += batchStats.domain_conflicts;
+    for (const [f, c] of Object.entries(batchStats.fields_updated))
+      result.fields_updated[f] = (result.fields_updated[f] || 0) + (c as number);
+    for (const [f, c] of Object.entries(batchStats.skipped_fields))
+      result.skipped_fields[f] = (result.skipped_fields[f] || 0) + (c as number);
+    result.errors.push(...batchStats.errors);
 
     processedRows += chunk.length;
     onProgress?.(processedRows, totalRows);
@@ -409,6 +261,207 @@ export async function parseAndImportCsv(
 
   return result;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared row-processing kernel — called by both parseAndImportCsv (file path)
+// AND the /api/upload/batch endpoint (chunked JSON path).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ProcessRowBatchInput {
+  /** Pre-parsed data rows as raw string arrays (from the original CSV). */
+  rawRows: string[][];
+  /** index → field mapping already resolved for this source. */
+  columnMapping: Record<number, string>;
+  domainColIdx?: number;
+  websiteColIdx?: number;
+  sourceType: CsvSourceType;
+  funnelId: number;
+  batchId: number;
+  sourceFileName?: string | null;
+  /** Shared dedup set across multiple calls for the same upload session. */
+  seenDomains: Set<string>;
+}
+
+export interface ProcessRowBatchOutput {
+  total_rows: number;
+  new_companies: number;
+  matched_companies: number;
+  updated_companies: number;
+  duplicates_skipped: number;
+  domain_conflicts: number;
+  fields_updated: Record<string, number>;
+  skipped_fields: Record<string, number>;
+  errors: string[];
+}
+
+export async function processRowBatch(input: ProcessRowBatchInput): Promise<ProcessRowBatchOutput> {
+  const {
+    rawRows, columnMapping, domainColIdx, websiteColIdx,
+    sourceType, funnelId, batchId, sourceFileName, seenDomains,
+  } = input;
+
+  const out: ProcessRowBatchOutput = {
+    total_rows: 0, new_companies: 0, matched_companies: 0,
+    updated_companies: 0, duplicates_skipped: 0, domain_conflicts: 0,
+    fields_updated: {}, skipped_fields: {}, errors: [],
+  };
+
+  const pending: BatchChangeRow[] = [];
+  const pendingDecisions: MatchDecisionRow[] = [];
+
+  await Promise.all(rawRows.map(async (row) => {
+    if (!row || row.length < 1) return;
+    out.total_rows++;
+
+    try {
+      let rawDomain = domainColIdx !== undefined ? row[domainColIdx] : '';
+      if (!rawDomain && websiteColIdx !== undefined) {
+        rawDomain = row[websiteColIdx];
+      }
+
+      if (!rawDomain || rawDomain.trim().length < 3) return;
+
+      const domain = normalizeDomain(rawDomain);
+      if (!domain || domain.length < 4 || !domain.includes('.')) return;
+
+      if (seenDomains.has(domain)) {
+        out.duplicates_skipped++;
+        return;
+      }
+      seenDomains.add(domain);
+
+      const companyData: Record<string, unknown> = { domain };
+
+      for (const [colIdx, field] of Object.entries(columnMapping)) {
+        const value = row[parseInt(colIdx)]?.trim();
+        if (!value || value === '') continue;
+
+        switch (field) {
+          case 'domain':
+          case 'website':
+            if (field === 'website') companyData.website = value;
+            break;
+          case 'apollo_employees':
+          case 'employee_reo':
+          case 'crunchbase_employees':
+          case 'total_funding':
+          case 'latest_funding_amount':
+          case 'annual_revenue':
+          case 'founded_year':
+          case 'crunchbase_funding':
+          case 'revenue_reo':
+          case 'sales_team_count':
+            companyData[field] = parseNumeric(value);
+            break;
+          case 'is_in_apollo':
+          case 'needs_manual_review':
+          case 'is_nonprofit':
+            companyData[field] = parseBoolean(value) ? 1 : 0;
+            break;
+          case 'is_netnew':
+            break; // Computed, not imported
+          case 'company_name':
+            if (!isJunkName(value)) companyData.company_name = value;
+            break;
+          default:
+            companyData[field] = value;
+        }
+      }
+
+      if (!companyData.website) {
+        companyData.website = `https://${domain}`;
+      }
+
+      if (sourceType === 'apollo') {
+        companyData.is_in_apollo = 1;
+      }
+
+      // Check NetNew status
+      const inMaster = await isInMasterIcp(domain);
+      companyData.is_netnew = inMaster ? 0 : 1;
+
+      // Smart Domain Resolution
+      const smartMatch = await findCompanyByDomainSmart(
+        domain,
+        companyData.company_name as string | undefined,
+        companyData.company_linkedin_url as string | undefined,
+      );
+
+      const upsertOpts = { source: sourceType };
+      let up: UpsertResult;
+
+      if (smartMatch && smartMatch.confidence === 'exact') {
+        companyData.domain = smartMatch.domain;
+        up = await upsertCompanyTracked(companyData, upsertOpts);
+        pendingDecisions.push({
+          batch_id: batchId, input_domain: domain,
+          matched_domain: smartMatch.domain, company_id: up.id,
+          match_method: smartMatch.matchType,
+          match_detail: domain === smartMatch.domain ? null : `${domain} → ${smartMatch.domain}`,
+          confidence: 'exact',
+        });
+      } else if (smartMatch) {
+        up = await upsertCompanyTracked(companyData, upsertOpts);
+        await createMergeCandidate(
+          smartMatch.id, up.id, smartMatch.matchType,
+          `${domain} ↔ ${smartMatch.domain} (${smartMatch.matchType})`,
+          smartMatch.confidence,
+        );
+        out.domain_conflicts++;
+        pendingDecisions.push({
+          batch_id: batchId, input_domain: domain,
+          matched_domain: smartMatch.domain, company_id: up.id,
+          match_method: 'merge_candidate',
+          match_detail: `${domain} ↔ ${smartMatch.domain} via ${smartMatch.matchType}`,
+          confidence: smartMatch.confidence,
+        });
+      } else {
+        up = await upsertCompanyTracked(companyData, upsertOpts);
+        pendingDecisions.push({
+          batch_id: batchId, input_domain: domain,
+          matched_domain: null, company_id: up.id,
+          match_method: 'new_insert',
+          match_detail: null,
+          confidence: 'none',
+        });
+      }
+
+      const companyId = up.id;
+      await linkCompanyToFunnel(companyId, funnelId);
+
+      const rootName = extractRootName(domain);
+      await addDomainAlias(companyId, domain, rootName, sourceType, up.wasInsert);
+
+      for (const c of up.applied) {
+        pending.push({ company_id: companyId, was_insert: up.wasInsert, field: c.field, old_value: c.old_value, new_value: c.new_value });
+        out.fields_updated[c.field] = (out.fields_updated[c.field] || 0) + 1;
+      }
+      for (const s of up.skipped) {
+        out.skipped_fields[s] = (out.skipped_fields[s] || 0) + 1;
+      }
+
+      const appliedNames = up.applied.map(c => c.field);
+      if (appliedNames.length > 0 && sourceFileName) {
+        await addDataSource(companyId, sourceType, sourceFileName, appliedNames);
+      }
+
+      if (up.wasInsert) {
+        out.new_companies++;
+      } else {
+        out.matched_companies++;
+        out.updated_companies++;
+      }
+    } catch (err) {
+      out.errors.push(`Row: ${(err as Error).message}`);
+    }
+  }));
+
+  await recordFieldChanges(batchId, pending);
+  await recordMatchDecisions(pendingDecisions);
+
+  return out;
+}
+
 
 /**
  * Parse a master ICP list CSV.

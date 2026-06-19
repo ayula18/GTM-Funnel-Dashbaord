@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { formatNumber, errorMessage } from '@/lib/utils';
 import { detectSourceFromFile, parseCsvPreview, autoMapField } from '@/lib/csv-detect';
 import { MAPPABLE_FIELDS, SOURCE_LABEL } from '@/lib/source-policy';
-import { uploadCsv, type UploadProgress } from '@/lib/upload-client';
+import { uploadCsvUnified, type UploadProgress } from '@/lib/upload-client';
 import type { CsvSourceType, UploadResult } from '@/lib/types';
 
 const SOURCE_INFO: Record<string, { label: string; icon: React.ReactNode; color: string; desc: string }> = {
@@ -125,25 +125,39 @@ export function UploadToFunnelDialog({ funnelId, open, onOpenChange, onSuccess }
     setProgress(null);
 
     try {
+      // Build header → field mapping (same logic as before, used by both paths)
+      const resolvedMapping: Record<string, string> = {};
+      if (headers.length > 0) {
+        for (const h of headers) {
+          if (h === matchColumn) { resolvedMapping[h] = 'domain'; continue; }
+          const f = mapping[h] ?? SKIP;
+          resolvedMapping[h] = f === 'domain' ? SKIP : f;
+        }
+      }
+
+      // Build FormData for the small-file (streaming) path — unchanged behaviour
       const formData = new FormData();
       formData.append('file', file);
       formData.append('funnel_id', funnelId.toString());
       formData.append('type', 'companies');
       if (effectiveSource !== 'unknown') formData.append('source_type', effectiveSource);
-
-      // Send a manual mapping when the user touched anything. The matching column
-      // is the domain key; every other column uses its chosen field (or skip).
       if (mappingEdited && headers.length > 0) {
-        const send: Record<string, string> = {};
-        for (const h of headers) {
-          if (h === matchColumn) { send[h] = 'domain'; continue; }
-          const f = mapping[h] ?? SKIP;
-          send[h] = f === 'domain' ? SKIP : f;   // only the match column is the domain key
-        }
-        formData.append('column_mapping', JSON.stringify(send));
+        formData.append('column_mapping', JSON.stringify(resolvedMapping));
       }
 
-      const data = await uploadCsv(formData, setProgress);
+      // websiteHeader: fallback for when the domain column is a full URL
+      const websiteHeader = headers.find(h => h !== matchColumn && resolvedMapping[h] === 'website');
+
+      const data = await uploadCsvUnified({
+        file,
+        formData,
+        sourceType:    effectiveSource,
+        columnMapping: resolvedMapping,
+        domainHeader:  matchColumn,
+        websiteHeader,
+        funnelId,
+        onProgress:    setProgress,
+      });
 
       setResult(data);
       toast.success('Data appended successfully!');
