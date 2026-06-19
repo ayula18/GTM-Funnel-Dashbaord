@@ -76,16 +76,21 @@ export async function POST(request: Request) {
       prevTotals = {},
     } = body;
 
-    if (!funnelIdRaw) return NextResponse.json({ error: 'funnelId required' }, { status: 400 });
+    // funnelId can be 0 when creating a new funnel — do NOT use !funnelIdRaw here
+    if (funnelIdRaw === undefined || funnelIdRaw === null) return NextResponse.json({ error: 'funnelId required' }, { status: 400 });
     if (!rows || !Array.isArray(rows)) return NextResponse.json({ error: 'rows array required' }, { status: 400 });
     if (!sourceType) return NextResponse.json({ error: 'sourceType required' }, { status: 400 });
 
     // ── Resolve funnel ───────────────────────────────────────────────────────
     let funnelId = Number(funnelIdRaw);
     if (!funnelId && funnelName) {
+      // funnelId was 0 → create a new funnel with the given name
       funnelId = await createFunnel(funnelName);
     }
-    if (!funnelId) return NextResponse.json({ error: 'Invalid funnelId' }, { status: 400 });
+    if (!funnelId) {
+      // funnelId is still 0: caller passed 0 without a funnelName
+      return NextResponse.json({ error: 'funnelName required when creating a new funnel (funnelId 0)' }, { status: 400 });
+    }
 
     // ── Build index-keyed columnMapping from header-keyed map ────────────────
     // The client sends { headerName: fieldName }. processRowBatch needs
