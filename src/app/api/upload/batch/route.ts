@@ -101,6 +101,22 @@ export async function POST(request: Request) {
       }
     }
 
+    // ── Source-aware column remapping (mirrors parseAndImportCsv) ─────────
+    // Generic headers like "Number of Employees" auto-map to apollo_employees,
+    // but Crunchbase data must go to crunchbase-owned columns or the source
+    // policy will silently block the write.
+    if (sourceType === 'crunchbase') {
+      for (const [idx, field] of Object.entries(indexedMapping)) {
+        if (field === 'apollo_employees') indexedMapping[Number(idx)] = 'crunchbase_employees';
+        if (field === 'total_funding')    indexedMapping[Number(idx)] = 'crunchbase_funding';
+        if (field === 'latest_funding')   indexedMapping[Number(idx)] = 'crunchbase_funding_type';
+        if (field === 'category')         indexedMapping[Number(idx)] = 'short_description';
+        if (field === 'company_type')     delete indexedMapping[Number(idx)];
+        if (field === 'annual_revenue')   delete indexedMapping[Number(idx)];
+        if (field === 'last_raised_at')   delete indexedMapping[Number(idx)];
+      }
+    }
+
     // Domain / website column indices
     const domainColIdx  = domainHeader  ? headers.indexOf(domainHeader)  : -1;
     const websiteColIdx = websiteHeader ? headers.indexOf(websiteHeader) : -1;

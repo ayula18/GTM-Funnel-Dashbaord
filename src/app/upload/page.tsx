@@ -14,8 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { formatNumber, errorMessage, cn } from '@/lib/utils';
-import { detectSourceFromFile } from '@/lib/csv-detect';
-import { uploadCsv, type UploadProgress } from '@/lib/upload-client';
+import { detectSourceFromFile, parseCsvPreview, autoMapField } from '@/lib/csv-detect';
+import { uploadCsvUnified, type UploadProgress } from '@/lib/upload-client';
 import type { CsvSourceType, UploadResult } from '@/lib/types';
 
 const SOURCE_INFO: Record<string, { label: string; icon: React.ReactNode; color: string; desc: string }> = {
@@ -83,13 +83,48 @@ export default function UploadPage() {
     setProgress(null);
 
     try {
+      // ── Auto-detect column mapping from the CSV headers ──────────────────
+      // This replicates what the server would do, but in the browser —
+      // so the chunked path can send pre-mapped JSON rows.
+      const { headers } = await parseCsvPreview(file);
+      const columnMapping: Record<string, string> = {};
+      let domainHeader = '';
+      let websiteHeader: string | undefined;
+
+      for (const h of headers) {
+        const field = autoMapField(h);
+        if (field) {
+          columnMapping[h] = field;
+          if (field === 'domain' && !domainHeader) domainHeader = h;
+          if (field === 'website' && !websiteHeader) websiteHeader = h;
+        }
+      }
+
+      // If no domain column detected, fall back to 'website' as domain key
+      if (!domainHeader && websiteHeader) {
+        domainHeader = websiteHeader;
+        columnMapping[websiteHeader] = 'domain';
+        websiteHeader = undefined;
+      }
+
+      // Build FormData for the small-file (streaming) fallback path
       const formData = new FormData();
       formData.append('file', file);
       formData.append('funnel_name', funnelName);
       formData.append('type', 'companies');
       if (effectiveSource !== 'unknown') formData.append('source_type', effectiveSource);
 
-      const data = await uploadCsv(formData, setProgress);
+      const data = await uploadCsvUnified({
+        file,
+        formData,
+        sourceType:    effectiveSource,
+        columnMapping,
+        domainHeader,
+        websiteHeader,
+        funnelId:      0,          // 0 = create new funnel
+        funnelName,
+        onProgress:    setProgress,
+      });
 
       setResult(data);
       toast.success('Funnel created successfully!');

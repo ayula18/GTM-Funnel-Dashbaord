@@ -177,7 +177,7 @@ export interface UploadBatch {
 export interface ScrapeResult {
   domain: string;
   html: string | null;
-  status: 'success' | 'failed' | 'domain_dead';
+  status: 'success' | 'failed' | 'domain_dead' | 'blocked';
   error?: string;
 }
 

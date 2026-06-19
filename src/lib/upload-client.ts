@@ -119,7 +119,8 @@ export interface ChunkedUploadOptions {
 }
 
 export async function uploadCsvChunked(opts: ChunkedUploadOptions): Promise<UploadResult> {
-  const { file, funnelId, funnelName, sourceType, columnMapping, domainHeader, websiteHeader, onProgress } = opts;
+  const { file, funnelName, sourceType, columnMapping, domainHeader, websiteHeader, onProgress } = opts;
+  let funnelId = opts.funnelId;
 
   // ── 1. Parse entire CSV in the browser ──────────────────────────────────
   const text = await file.text();
@@ -202,6 +203,10 @@ export async function uploadCsvChunked(opts: ChunkedUploadOptions): Promise<Uplo
     batchId     = data.batchId;
     seenDomains = data.seenDomains ?? seenDomains;
     prevTotals  = data.totals ?? prevTotals;
+
+    // When creating a new funnel (funnelId was 0), the server returns the real
+    // ID in totals.funnel_id. Use it for all subsequent chunks.
+    if (data.totals?.funnel_id) funnelId = data.totals.funnel_id as number;
 
     processedRows += chunk.length;
     onProgress?.({
