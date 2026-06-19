@@ -1,11 +1,8 @@
 import OpenAI from 'openai';
 import { ExtractedSignals, ClassificationResult, CATEGORIES } from '../types';
+import { backupOpenAIKeys, isInsufficientQuota } from '../openai-keys';
 
 export async function classifyCompany(signals: ExtractedSignals, apiKey: string): Promise<ClassificationResult> {
-  // Bounded timeout + retries so a hung OpenAI call can never stall a batch
-  // (the SDK default is ~10 min × 2 retries — that blocks Stop for minutes).
-  const openai = new OpenAI({ apiKey, timeout: 30_000, maxRetries: 1 });
-
   const systemPrompt = `You are a GTM analyst at Reo.Dev. Classify companies using their website data.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -307,37 +304,59 @@ Agency: ${signals.agency_signals}
 Observations: ${signals.observations}
 Scrape Status: ${signals.scrape_status}`;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ],
-    temperature: 0.1,
-    max_tokens: 500,
-    response_format: { type: 'json_object' }
-  });
+  // Try the primary key first, then any backup keys. We ONLY fail over to the
+  // next key when the current one is out of credits / over quota — for timeouts,
+  // rate-limits or network errors a backup key wouldn't help, so we rethrow and
+  // let the batch's existing per-company error handling deal with it.
+  const keys = [apiKey, ...backupOpenAIKeys()].filter((k, i, arr) => k && arr.indexOf(k) === i);
+  if (keys.length === 0) throw new Error('No OpenAI API key configured.');
 
-  const content = response.choices?.[0]?.message?.content || '{}';
-  let parsed: ClassificationResult;
-  try {
-    parsed = JSON.parse(content) as ClassificationResult;
-  } catch {
-    // Malformed JSON from the model — treat as "couldn't classify" (Review),
-    // never crash the batch.
-    return {
-      domain: signals.domain,
-      is_icp: 'Review',
-      // INTENTIONALLY left empty — NOT 'Not Relevant'. If we set 'Not Relevant'
-      // the hard rule forces icp_decision='No', creating false negatives.
-      // An empty classification falls through to the Review path safely.
-      company_classification: '',
-      reason: 'Model returned malformed output — needs manual review.',
-    } as ClassificationResult;
+  let lastErr: unknown;
+  for (let i = 0; i < keys.length; i++) {
+    // Bounded timeout + retries so a hung OpenAI call can never stall a batch
+    // (the SDK default is ~10 min × 2 retries — that blocks Stop for minutes).
+    const openai = new OpenAI({ apiKey: keys[i], timeout: 30_000, maxRetries: 1 });
+    try {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.1,
+        max_tokens: 500,
+        response_format: { type: 'json_object' }
+      });
+
+      const content = response.choices?.[0]?.message?.content || '{}';
+      let parsed: ClassificationResult;
+      try {
+        parsed = JSON.parse(content) as ClassificationResult;
+      } catch {
+        // Malformed JSON from the model — treat as "couldn't classify" (Review),
+        // never crash the batch.
+        return {
+          domain: signals.domain,
+          is_icp: 'Review',
+          // INTENTIONALLY left empty — NOT 'Not Relevant'. If we set 'Not Relevant'
+          // the hard rule forces icp_decision='No', creating false negatives.
+          // An empty classification falls through to the Review path safely.
+          company_classification: '',
+          reason: 'Model returned malformed output — needs manual review.',
+        } as ClassificationResult;
+      }
+
+      // ensure we have the domain
+      if (!parsed.domain) parsed.domain = signals.domain;
+
+      return parsed;
+    } catch (err) {
+      lastErr = err;
+      // Out of credits on this key → fall over to the next (backup) key.
+      if (isInsufficientQuota(err) && i < keys.length - 1) continue;
+      throw err;
+    }
   }
 
-  // ensure we have the domain
-  if (!parsed.domain) parsed.domain = signals.domain;
-
-  return parsed;
+  throw lastErr;
 }

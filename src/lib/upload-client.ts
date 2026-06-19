@@ -12,10 +12,10 @@ export interface UploadProgress {
 
 // ─── Small-file path (≤ CHUNK_THRESHOLD) ─────────────────────────────────────
 // Sends the raw file as FormData to /api/upload and streams NDJSON progress.
-// Used only for files under the threshold (safe margin below Vercel's 4.5 MB).
+// Used only for files under the threshold (safe margin below Vercel/Next.js 1MB limit).
 
-const CHUNK_THRESHOLD_BYTES = 3.5 * 1024 * 1024; // 3.5 MB
-const ROWS_PER_CHUNK        = 500;
+const CHUNK_THRESHOLD_BYTES = 500 * 1024; // 500 KB
+const ROWS_PER_CHUNK        = 100;
 
 /**
  * POST a CSV to /api/upload and stream live progress.
@@ -33,8 +33,14 @@ export async function uploadCsv(
   const ct = res.headers.get('content-type') || '';
 
   if (!ct.includes('ndjson') || !res.body) {
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Upload failed');
+    let data: any = {};
+    const text = await res.text();
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { error: text.slice(0, 100) };
+    }
+    if (!res.ok) throw new Error(data.error || `Upload failed (HTTP ${res.status})`);
     return data as UploadResult;
   }
 
@@ -175,8 +181,15 @@ export async function uploadCsvChunked(opts: ChunkedUploadOptions): Promise<Uplo
     });
 
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error((data as { error?: string }).error || `Upload chunk ${chunkIdx + 1} failed (HTTP ${res.status})`);
+      const text = await res.text().catch(() => '');
+      let errorDesc = `Upload chunk ${chunkIdx + 1} failed (HTTP ${res.status})`;
+      try {
+        const data = JSON.parse(text);
+        if (data.error) errorDesc = data.error;
+      } catch {
+        if (text) errorDesc += `: ${text.slice(0, 100)}`;
+      }
+      throw new Error(errorDesc);
     }
 
     const data = await res.json() as {

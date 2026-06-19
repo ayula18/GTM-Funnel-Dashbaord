@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { errorMessage } from '@/lib/utils';
 import { processClassificationBatch } from '@/lib/pipeline/runner';
 import { getFunnel, updateFunnelClassification } from '@/lib/db';
+import { openAIKeys } from '@/lib/openai-keys';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'funnel_id required' }, { status: 400 });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY || '';
+    // Primary key first; the classifier falls over to OPENAI_API_KEY_BACKUP
+    // automatically when the primary runs out of credits.
+    const apiKey = openAIKeys()[0] || '';
     if (!apiKey) {
       return NextResponse.json(
         { error: 'OpenAI API key not configured. Set the OPENAI_API_KEY environment variable.' },
