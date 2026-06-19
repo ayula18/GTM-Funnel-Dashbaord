@@ -9,9 +9,13 @@ import Papa from 'papaparse';
 import { CsvSourceType } from './types';
 
 const SOURCE_SIGNATURES: Record<CsvSourceType, string[]> = {
-  apollo:      ['# employees', 'company linkedin url', 'sic codes', 'website', 'total funding', 'apollo account id', 'apollo employees', 'apollo employee count'],
+  // NOTE: 'website' is deliberately EXCLUDED from Apollo — it's too generic
+  // (Crunchbase scraper output also has 'website') and caused misdetection.
+  // Apollo is reliably identified by definitive columns ('apollo account id',
+  // 'apollo employees') or by specific sigs like '# employees', 'sic codes'.
+  apollo:      ['# employees', 'company linkedin url', 'sic codes', 'total funding', 'apollo account id', 'apollo employees', 'apollo employee count'],
   reo_db:      ['reodb employee count', 'employee reo', 'employee_reo', 'reo employee', 'reo employees', 'revenue reo', 'revenue_reo', 'employee count reo'],
-  crunchbase:  ['crunchbase funding', 'crunchbase_funding', 'cb rank', 'organization name', 'cb funding total', 'cb rank (company)', 'founded date', 'last funding type', 'number of employees', 'industries'],
+  crunchbase:  ['crunchbase funding', 'crunchbase_funding', 'cb rank', 'organization name', 'cb funding total', 'cb rank (company)', 'founded date', 'last funding type', 'number of employees', 'industries', 'funding stage', 'operating status', 'revenue range', 'funding total', 'founded on'],
   icp_output:  ['icp new', 'is devtool', 'catogery', 'icp_decision', 'icp decision', 'company_classification', 'icp fit level'],
   raw_domains: [],
   unknown:     [],
@@ -30,6 +34,11 @@ const DEFINITIVE_COLUMNS: Record<string, CsvSourceType> = {
   'cb rank (company)':    'crunchbase',
   'cb funding total':     'crunchbase',
   'crunchbase funding':   'crunchbase',
+  // Crunchbase scraper output — these column names are unique to Crunchbase
+  // data and don't appear in Apollo, Reo DB, or ICP exports.
+  'funding stage':        'crunchbase',
+  'operating status':     'crunchbase',
+  'revenue range':        'crunchbase',
   'icp new':              'icp_output',
   'icp decision':         'icp_output',
   'icp_decision':         'icp_output',
@@ -94,6 +103,9 @@ export const COLUMN_MAP: Record<string, string> = {
   '# of employees':         'apollo_employees',
   'number of employees':    'apollo_employees',
   'employee count':         'apollo_employees',
+  'crunchbase employees':   'crunchbase_employees',
+  'cb employees':           'crunchbase_employees',
+  'cb employee count':      'crunchbase_employees',
   'employee reo':           'employee_reo',
   'employee_reo':           'employee_reo',
   'reodb employee count':   'employee_reo',
@@ -127,6 +139,8 @@ export const COLUMN_MAP: Record<string, string> = {
   'hq country':             'company_country',
   'headquarters location':  'company_country',
   'hq location':            'company_country',
+  'location':               'company_country',
+  'location identifiers':   'company_country',
 
   'total funding':          'total_funding',
   'total funding amount':   'total_funding',
@@ -139,13 +153,17 @@ export const COLUMN_MAP: Record<string, string> = {
   'latest funding':         'latest_funding',
   'latest funding type':    'latest_funding',
   'last funding type':      'latest_funding',
+  'funding stage':          'crunchbase_funding_type',
   'latest funding amount':  'latest_funding_amount',
   'last raised at':         'last_raised_at',
   'last funding date':      'last_raised_at',
+  'last funding at':        'last_raised_at',
   'founded date':           'founded_year',
+  'founded on':             'founded_year',
 
   'annual revenue':         'annual_revenue',
   'revenue':                'annual_revenue',
+  'revenue range':          'annual_revenue',
   'revenue reo':            'revenue_reo',
   'revenue_reo':            'revenue_reo',
   'reo revenue':            'revenue_reo',
@@ -155,6 +173,11 @@ export const COLUMN_MAP: Record<string, string> = {
   'naics codes':            'naics_codes',
   'naics':                  'naics_codes',
   'industries':             'category',
+  'categories':             'category',
+
+  'operating status':       '_skip',
+  'contact email':          '_skip',
+  'phone number':           '_skip',
 
   'short description':      'short_description',
   'description':            'short_description',

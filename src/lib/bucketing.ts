@@ -54,6 +54,7 @@ export interface BucketInput {
   sub_category?: string | null;
   apollo_employees?: number | null;
   employee_reo?: number | null;
+  crunchbase_employees?: number | null;
   total_funding?: number | null;
   crunchbase_funding?: number | null;
   annual_revenue?: number | null;
@@ -85,7 +86,7 @@ export function classifyBucket(company: BucketInput): BucketResult {
   const categoryStr  = `${company.category || ''} ${company.sub_category || ''}`.toLowerCase();
   const isApiSdk     = categoryStr.includes('api') || categoryStr.includes('sdk');
 
-  const employees = Number(company.employee_reo) || Number(company.apollo_employees) || 0;
+  const employees = Number(company.employee_reo) || Number(company.apollo_employees) || Number(company.crunchbase_employees) || 0;
   // 2-source preference: Apollo funding first, then Crunchbase.
   const funding   = Number(company.total_funding) || Number(company.crunchbase_funding) || 0;
   // 2-source preference: Reo revenue first, then Apollo annual revenue.
@@ -135,13 +136,30 @@ export function getBucketId(company: BucketInput): BucketId {
 // ── Raw CSV row → BucketInput ──────────────────────────────────────────────
 
 const NUMERIC_BUCKET_FIELDS = new Set([
-  'apollo_employees', 'employee_reo', 'total_funding', 'crunchbase_funding',
+  'apollo_employees', 'employee_reo', 'crunchbase_employees', 'total_funding', 'crunchbase_funding',
   'annual_revenue', 'revenue_reo', 'sales_team_count',
 ]);
 
 function parseNum(value: string): number | null {
   const t = (value || '').trim();
   if (!t || t === 'N/A' || t === '-' || /^not\s*found$/i.test(t)) return null;
+
+  // ── Range values (Crunchbase: "101-250", "501-1,000") → midpoint ──────
+  const rangeMatch = t.match(/^[\s$€£]*([0-9][0-9,]*)\s*[-–—]\s*([0-9][0-9,]*)/);
+  if (rangeMatch) {
+    const low  = parseFloat(rangeMatch[1].replace(/,/g, ''));
+    const high = parseFloat(rangeMatch[2].replace(/,/g, ''));
+    if (!isNaN(low) && !isNaN(high)) return Math.round((low + high) / 2);
+  }
+
+  // ── Open-ended ("10001+", "10,000+") ──────────────────────────────────
+  const plusMatch = t.match(/^[\s$€£]*([0-9][0-9,]*)\s*\+/);
+  if (plusMatch) {
+    const n = parseFloat(plusMatch[1].replace(/,/g, ''));
+    if (!isNaN(n)) return n;
+  }
+
+  // ── Standard numeric with optional k/m/b suffix ───────────────────────
   const cleaned = t.replace(/[$,\s]/g, '').toLowerCase();
   const n = parseFloat(cleaned);
   if (Number.isNaN(n)) return null;
@@ -166,7 +184,7 @@ export function normalizeClassification(raw: string): string | null {
 
 export const BUCKET_FIELDS = [
   'company_classification', 'category', 'sub_category',
-  'apollo_employees', 'employee_reo', 'total_funding', 'crunchbase_funding',
+  'apollo_employees', 'employee_reo', 'crunchbase_employees', 'total_funding', 'crunchbase_funding',
   'annual_revenue', 'revenue_reo', 'sales_team_count',
 ] as const;
 

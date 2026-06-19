@@ -269,6 +269,7 @@ export default function DashboardPage() {
             <div className="flex gap-4 flex-wrap">
               {s.discard_breakdown.map((item) => {
                 const labels: Record<string, string> = {
+                  not_enriched: 'Not Enriched',
                   not_in_apollo: 'Not in Apollo',
                   low_employees: 'Low Employees',
                   not_icp: 'Not ICP',

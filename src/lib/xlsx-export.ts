@@ -15,6 +15,7 @@ const LABELS: Record<string, string> = {
   domain: 'Domain', company_name: 'Company Name', company_country: 'Country',
   website: 'Website', company_linkedin_url: 'LinkedIn (Apollo)',
   apollo_employees: 'Employees (Apollo)', employee_reo: 'Employees (Reo)',
+  crunchbase_employees: 'Employees (Crunchbase)',
   total_funding: 'Total Funding (Apollo)', crunchbase_funding: 'Funding (Crunchbase)',
   crunchbase_funding_type: 'Funding Type (CB)', annual_revenue: 'Annual Revenue',
   revenue_reo: 'Revenue (Reo)', latest_funding: 'Latest Funding Round',
@@ -156,8 +157,8 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
     companies.filter(c => c.employee_reo != null || c.revenue_reo != null),
   );
   addSheet('Crunchbase',
-    ['domain', 'company_name', 'crunchbase_funding', 'crunchbase_funding_type'],
-    companies.filter(c => c.crunchbase_funding != null),
+    ['domain', 'company_name', 'crunchbase_funding', 'crunchbase_funding_type', 'crunchbase_employees'],
+    companies.filter(c => c.crunchbase_funding != null || c.crunchbase_employees != null),
   );
 
   // 4) Discarded — companies dropped out of the funnel, with the reason/step
@@ -345,7 +346,7 @@ function buildSummarySheet(wb: ExcelJS.Workbook, funnel: Row, steps: FunnelSteps
   const stepHeader = ws.addRow(['Step', 'Passed', 'Dropped']);
   stepHeader.font = { bold: true };
   ws.addRow(['1 · Raw Import', steps.step1_raw, '']);
-  ws.addRow(['2 · In Apollo', steps.step2_apollo, steps.step2_drop]);
+  ws.addRow(['2 · Enriched', steps.step2_apollo, steps.step2_drop]);
   ws.addRow(['3 · Has Employees', steps.step3_employees, steps.step3_drop]);
   ws.addRow(['4 · ICP = Yes', steps.step4_icp_total, steps.step4_drop]);
   ws.addRow(['5 · Funded / Revenue', steps.step5_funded_total, steps.step5_drop]);
@@ -393,7 +394,7 @@ export async function buildCategorizationWorkbook(funnelId: number | null, netNe
   }
 
   const exportColumns = [
-    'domain', 'company_name', 'apollo_employees', 'employee_reo',
+    'domain', 'company_name', 'apollo_employees', 'employee_reo', 'crunchbase_employees',
     'total_funding', 'crunchbase_funding', 'annual_revenue', 'revenue_reo',
     'sales_team_count', 'manual_gtm_bucket', 'manual_gtm_reason', 'funnel_names',
     'company_classification', 'category', 'sub_category', 'website', 'company_linkedin_url'

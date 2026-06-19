@@ -7,7 +7,7 @@ import { PipelineProgress } from '@/components/pipeline-progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Download, ListChecks, AlertTriangle, XCircle, Upload, GitMerge, History, FileSpreadsheet, CloudUpload, RefreshCw } from 'lucide-react';
+import { Play, Download, ListChecks, AlertTriangle, XCircle, Upload, GitMerge, History, FileSpreadsheet, CloudUpload, RefreshCw, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatNumber, errorMessage } from '@/lib/utils';
 import type { FunnelWithStats, FunnelSteps } from '@/lib/types';
@@ -156,7 +156,7 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
   const getTabFilters = (): Record<string, string> => {
     switch (activeTab) {
       case 'review': return { needs_manual_review: 'true' };
-      case 'discarded': return { discard_reason: 'not_in_apollo,low_employees,not_icp,low_funding,dead_domain,scrape_failed' };
+      case 'discarded': return { discard_reason: 'not_enriched,not_in_apollo,low_employees,not_icp,low_funding,dead_domain,scrape_failed' };
       default: return {};
     }
   };
@@ -188,6 +188,39 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
       }
     } catch (error) {
       toast.error('Reset failed', { description: errorMessage(error) });
+    }
+  };
+
+  const resetReview = async () => {
+    const count = funnel?.icp_review ?? 0;
+    if (count === 0) {
+      toast.info('No Review companies to re-run.');
+      return;
+    }
+    if (!window.confirm(
+      `Re-run ICP classification on ${count} Review companies?\n\nThis queues them for a fresh LLM pass using the improved knowledge-fallback prompt. Failed/dead-domain scrapes are retried fresh. Successfully scraped companies reuse their cache (no extra credit spend).\n\nClassification will start immediately after confirming.`
+    )) return;
+
+    try {
+      const res = await fetch('/api/classify/reset-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ funnel_id: funnelId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Reset failed');
+      if (data.reset === 0) {
+        toast.info('No Review companies found.');
+      } else {
+        toast.success(`${data.reset} Review companies queued`, {
+          description: 'Classification starting now…',
+        });
+        fetchFunnel();
+        // Kick off the classification loop immediately — no need to hit Run separately
+        drive();
+      }
+    } catch (error) {
+      toast.error('Re-run Review failed', { description: errorMessage(error) });
     }
   };
 
@@ -327,6 +360,15 @@ export default function FunnelDetailPage({ params }: { params: Promise<{ id: str
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Re-run Failed
+          </Button>
+          <Button
+            variant="outline"
+            onClick={resetReview}
+            disabled={pipelineState.status === 'running' || pipelineState.status === 'stopping' || (funnel.icp_review ?? 0) === 0}
+            className="text-orange-500 border-orange-500/40 hover:bg-orange-500/10"
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Re-run Review ({formatNumber(funnel.icp_review ?? 0)})
           </Button>
           <Button 
             onClick={runPipeline}

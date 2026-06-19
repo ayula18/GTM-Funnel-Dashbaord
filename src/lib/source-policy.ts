@@ -42,6 +42,7 @@ export const SOURCE_OWNED_FIELDS: Record<CsvSourceType, string[]> = {
   crunchbase: [
     'crunchbase_funding',
     'crunchbase_funding_type',
+    'crunchbase_employees',
   ],
   icp_output: [
     'icp_decision',
@@ -135,6 +136,7 @@ export const MAPPABLE_FIELDS: MappableField[] = [
   { value: 'total_funding',          label: 'Total Funding (Apollo)', owner: 'apollo' },
   { value: 'crunchbase_funding',     label: 'Funding (Crunchbase)',   owner: 'crunchbase' },
   { value: 'crunchbase_funding_type',label: 'Funding Type (CB)',      owner: 'crunchbase' },
+  { value: 'crunchbase_employees',   label: 'Employees (Crunchbase)', owner: 'crunchbase' },
   { value: 'latest_funding',         label: 'Latest Funding Round',   owner: 'apollo' },
   { value: 'latest_funding_amount',  label: 'Latest Funding Amount',  owner: 'apollo' },
   { value: 'last_raised_at',         label: 'Last Raised At',         owner: 'apollo' },

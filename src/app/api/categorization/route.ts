@@ -33,7 +33,7 @@ export async function GET(request: Request) {
           id: c.id,
           company_name: c.company_name,
           domain: c.domain,
-          employees: c.employee_reo || c.apollo_employees,
+          employees: c.employee_reo || c.apollo_employees || c.crunchbase_employees,
           funding: c.total_funding || c.crunchbase_funding,
           revenue: c.revenue_reo || c.annual_revenue,
           sales_team_count: c.sales_team_count,

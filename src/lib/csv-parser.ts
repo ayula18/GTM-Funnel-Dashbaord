@@ -41,9 +41,28 @@ function mapHeaders(headers: string[]): Record<number, string> {
 
 function parseNumeric(value: string | null | undefined): number | null {
   if (!value || value.trim() === '' || value === 'N/A' || value === '-' || value === 'Not Found') return null;
+  const trimmed = value.trim();
+
+  // ── Range values (Crunchbase employee counts: "101-250", "501-1,000") ──
+  // Take the midpoint for the most representative estimate.
+  const rangeMatch = trimmed.match(/^[\s$€£]*([0-9][0-9,]*)\s*[-–—]\s*([0-9][0-9,]*)/);
+  if (rangeMatch) {
+    const low  = parseFloat(rangeMatch[1].replace(/,/g, ''));
+    const high = parseFloat(rangeMatch[2].replace(/,/g, ''));
+    if (!isNaN(low) && !isNaN(high)) return Math.round((low + high) / 2);
+  }
+
+  // ── Open-ended values ("10001+", "10,000+") ────────────────────────────
+  const plusMatch = trimmed.match(/^[\s$€£]*([0-9][0-9,]*)\s*\+/);
+  if (plusMatch) {
+    const n = parseFloat(plusMatch[1].replace(/,/g, ''));
+    if (!isNaN(n)) return n;
+  }
+
+  // ── Standard numeric with optional currency / multiplier suffix ────────
   // Strip all non-numeric characters EXCEPT decimals, minus signs, and k/m/b multipliers.
   // This handles currency symbols like €, £, ₹, etc. safely.
-  const cleaned = value.replace(/[^0-9.\-bmk]/gi, '').toLowerCase();
+  const cleaned = trimmed.replace(/[^0-9.\-bmk]/gi, '').toLowerCase();
   let num = parseFloat(cleaned);
   if (isNaN(num)) return null;
   if (cleaned.includes('b')) num *= 1000000000;
@@ -125,6 +144,34 @@ export async function parseAndImportCsv(
     Object.assign(columnMapping, mapHeaders(headers));
   }
 
+  // ── Source-aware column remapping ─────────────────────────────────────
+  // Generic headers like "Number of Employees" auto-map to apollo_employees,
+  // but if the source is Crunchbase, the source-policy will BLOCK writes to
+  // apollo_employees (owned by Apollo). Remap to the Crunchbase-owned column
+  // so the data actually gets stored. Same logic for total_funding → crunchbase_funding.
+  if (result.source_type === 'crunchbase') {
+    for (const [idx, field] of Object.entries(columnMapping)) {
+      if (field === 'apollo_employees') columnMapping[Number(idx)] = 'crunchbase_employees';
+      if (field === 'total_funding')    columnMapping[Number(idx)] = 'crunchbase_funding';
+      // latest_funding is Apollo-owned; for Crunchbase, store in crunchbase_funding_type.
+      if (field === 'latest_funding')   columnMapping[Number(idx)] = 'crunchbase_funding_type';
+      // category is icp_output-owned; Crunchbase's "categories" / "industries"
+      // column would be blocked by source policy. Store it in short_description
+      // (identity field, fill-if-empty) so we don't lose the data entirely — the
+      // ICP classifier will set the canonical category later.
+      if (field === 'category')         columnMapping[Number(idx)] = 'short_description';
+      // Crunchbase's company_type is "For Profit"/"Non-profit"/"Government" —
+      // completely different from the ICP taxonomy ("Commercially OSS"/"Non-OSS").
+      // Drop it to prevent data contamination.
+      if (field === 'company_type')     delete columnMapping[Number(idx)];
+      // annual_revenue is Apollo-owned; no CB-owned equivalent column exists.
+      // Drop to avoid silent source-policy skip + misleading upload logs.
+      if (field === 'annual_revenue')   delete columnMapping[Number(idx)];
+      // last_raised_at is Apollo-owned; drop for same reason.
+      if (field === 'last_raised_at')   delete columnMapping[Number(idx)];
+    }
+  }
+
   const domainColIdx  = Object.entries(columnMapping).find(([, field]) => field === 'domain')?.[0];
   const websiteColIdx = Object.entries(columnMapping).find(([, field]) => field === 'website')?.[0];
 
@@ -199,6 +246,7 @@ export async function parseAndImportCsv(
               break;
             case 'apollo_employees':
             case 'employee_reo':
+            case 'crunchbase_employees':
             case 'total_funding':
             case 'latest_funding_amount':
             case 'annual_revenue':

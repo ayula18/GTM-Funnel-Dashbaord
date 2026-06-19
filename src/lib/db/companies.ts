@@ -15,7 +15,7 @@ const ALL_COMPANY_FIELDS = [
   'confidence', 'is_devtool', 'is_netnew', 'manual_icp', 'manual_notes',
   'scrape_status', 'classification_reason', 'observations',
   'needs_manual_review', 'classified_at',
-  'crunchbase_funding', 'crunchbase_funding_type', 'revenue_reo',
+  'crunchbase_funding', 'crunchbase_funding_type', 'crunchbase_employees', 'revenue_reo',
   'sales_team_count',
   'parent_domain', 'is_sub_product', 'discard_reason', 'discard_step',
   'is_nonprofit', 'icp_rerun_count', 'last_icp_method',
@@ -134,12 +134,14 @@ export const FACET_COLUMNS: Record<string, string> = {
  * AND the per-step table filter (funnel_step), so a step's badge and the rows
  * you see when you click it always agree. Thresholds mirror computeDiscardReasons.
  *
- *   step 2 = reached Apollo · step 3 = has employees · step 4 = ICP=Yes ·
+ *   step 2 = enriched (has data from ANY source: Apollo, Crunchbase, Reo)
+ *   step 3 = has employees (from any source)
+ *   step 4 = ICP=Yes
  *   step 5 = funded or has revenue (>$100k)
  */
 export const FUNNEL_STEP_GATES: Record<number, string> = {
-  2: '(c.is_in_apollo = 1 OR c.crunchbase_funding IS NOT NULL OR c.total_funding IS NOT NULL OR c.apollo_employees IS NOT NULL OR c.employee_reo IS NOT NULL)',
-  3: '(COALESCE(c.employee_reo, 0) > 0 OR COALESCE(c.apollo_employees, 0) > 1)',
+  2: '(c.is_in_apollo = 1 OR c.crunchbase_funding IS NOT NULL OR c.total_funding IS NOT NULL OR c.apollo_employees IS NOT NULL OR c.employee_reo IS NOT NULL OR c.crunchbase_employees IS NOT NULL)',
+  3: '(COALESCE(c.employee_reo, 0) > 0 OR COALESCE(c.apollo_employees, 0) > 1 OR COALESCE(c.crunchbase_employees, 0) > 1)',
   4: "c.icp_decision = 'Yes'",
   5: '(GREATEST(COALESCE(c.total_funding, 0), COALESCE(c.crunchbase_funding, 0)) > 100000 OR GREATEST(COALESCE(c.annual_revenue, 0), COALESCE(c.revenue_reo, 0)) > 100000)',
 };
@@ -208,8 +210,8 @@ export function buildCompanyFilter(
   if (filters.is_in_apollo        !== undefined) { conditions.push('c.is_in_apollo = ?');        values.push(filters.is_in_apollo ? 1 : 0); }
 
   const rangeFilters: Array<[string, string, '>=' | '<=']> = [
-    ['min_employees',          '(COALESCE(c.employee_reo, c.apollo_employees, 0))', '>='],
-    ['max_employees',          '(COALESCE(c.employee_reo, c.apollo_employees, 0))', '<='],
+    ['min_employees',          '(COALESCE(c.employee_reo, c.apollo_employees, c.crunchbase_employees, 0))', '>='],
+    ['max_employees',          '(COALESCE(c.employee_reo, c.apollo_employees, c.crunchbase_employees, 0))', '<='],
     ['min_funding',            'c.total_funding',                                   '>='],
     ['max_funding',            'c.total_funding',                                   '<='],
     ['min_crunchbase_funding', 'c.crunchbase_funding',                              '>='],
@@ -244,7 +246,7 @@ export async function getCompanies(funnelId: number | null, filters: Record<stri
   const sortBy       = (filters.sort_by    as string) || 'c.company_name';
   const sortOrder    = (filters.sort_order as string) || 'asc';
   const validSortCols = [
-    'c.domain', 'c.company_name', 'c.apollo_employees', 'c.employee_reo',
+    'c.domain', 'c.company_name', 'c.apollo_employees', 'c.employee_reo', 'c.crunchbase_employees',
     'c.total_funding', 'c.annual_revenue', 'c.icp_decision', 'c.category',
     'c.confidence', 'c.company_classification', 'c.founded_year',
     'c.created_at', 'c.updated_at', 'c.classified_at',
@@ -304,8 +306,8 @@ export async function computeDiscardReasons(funnelId: number, companyId?: number
       discard_reason = CASE 
         WHEN c.scrape_status = 'domain_dead' THEN 'dead_domain'
         WHEN c.manual_icp = 'Yes' THEN NULL
-        WHEN COALESCE(c.is_in_apollo, 0) = 0 THEN 'not_in_apollo'
-        WHEN COALESCE(c.employee_reo, 0) <= 0 AND COALESCE(c.apollo_employees, 0) <= 1 THEN 'low_employees'
+        WHEN COALESCE(c.is_in_apollo, 0) = 0 AND c.crunchbase_funding IS NULL AND c.total_funding IS NULL AND c.apollo_employees IS NULL AND c.employee_reo IS NULL AND c.crunchbase_employees IS NULL THEN 'not_enriched'
+        WHEN COALESCE(c.employee_reo, 0) <= 0 AND COALESCE(c.apollo_employees, 0) <= 1 AND COALESCE(c.crunchbase_employees, 0) <= 1 THEN 'low_employees'
         WHEN c.icp_decision IS DISTINCT FROM 'Yes' THEN 'not_icp'
         WHEN GREATEST(COALESCE(c.total_funding, 0), COALESCE(c.crunchbase_funding, 0)) <= 100000 
          AND GREATEST(COALESCE(c.annual_revenue, 0), COALESCE(c.revenue_reo, 0)) <= 100000 THEN 'low_funding'
@@ -314,8 +316,8 @@ export async function computeDiscardReasons(funnelId: number, companyId?: number
       discard_step = CASE 
         WHEN c.scrape_status = 'domain_dead' THEN 1
         WHEN c.manual_icp = 'Yes' THEN NULL
-        WHEN COALESCE(c.is_in_apollo, 0) = 0 THEN 2
-        WHEN COALESCE(c.employee_reo, 0) <= 0 AND COALESCE(c.apollo_employees, 0) <= 1 THEN 3
+        WHEN COALESCE(c.is_in_apollo, 0) = 0 AND c.crunchbase_funding IS NULL AND c.total_funding IS NULL AND c.apollo_employees IS NULL AND c.employee_reo IS NULL AND c.crunchbase_employees IS NULL THEN 2
+        WHEN COALESCE(c.employee_reo, 0) <= 0 AND COALESCE(c.apollo_employees, 0) <= 1 AND COALESCE(c.crunchbase_employees, 0) <= 1 THEN 3
         WHEN c.icp_decision IS DISTINCT FROM 'Yes' THEN 4
         WHEN GREATEST(COALESCE(c.total_funding, 0), COALESCE(c.crunchbase_funding, 0)) <= 100000 
          AND GREATEST(COALESCE(c.annual_revenue, 0), COALESCE(c.revenue_reo, 0)) <= 100000 THEN 5
@@ -521,9 +523,67 @@ export async function resetFailedClassifications(funnelId: number): Promise<numb
   return failed.length;
 }
 
+/**
+ * Reset companies that are in "Review" status so they re-enter the
+ * unclassified queue for a fresh LLM pass. This is the targeted re-run path
+ * when you want to re-classify only Review companies (e.g. after improving the
+ * prompt or fixing source detection) without touching the correctly classified
+ * Yes/No companies.
+ *
+ * Also clears scrape cache for companies whose scrape previously failed/domain_dead
+ * so they get a fresh scrape attempt with the improved knowledge-fallback prompt.
+ * Companies with a successful cached scrape keep their cache (no wasted credits).
+ *
+ * Returns the count of companies reset.
+ */
+export async function resetReviewCompanies(funnelId: number): Promise<number> {
+  // Find all Review companies in this funnel
+  const reviews = await qp(`
+    SELECT c.id, c.domain, c.scrape_status FROM companies c
+    JOIN funnel_companies fc ON c.id = fc.company_id
+    WHERE fc.funnel_id = $1
+      AND c.icp_decision = 'Review'
+      AND c.merged_into_id IS NULL
+  `, [funnelId]);
+
+  if (reviews.length === 0) return 0;
+
+  const ids    = reviews.map(r => r.id as number);
+  // Only clear scrape cache for failed/dead domains — successful scrapes are reusable.
+  const staleDomains = reviews
+    .filter(r => r.scrape_status === 'failed' || r.scrape_status === 'domain_dead')
+    .map(r => r.domain as string);
+
+  // Reset classification fields → back into the unclassified queue
+  await qp(`
+    UPDATE companies
+       SET classified_at          = NULL,
+           icp_decision           = NULL,
+           company_classification = NULL,
+           category               = NULL,
+           sub_category           = NULL,
+           company_type           = NULL,
+           confidence             = NULL,
+           icp_fit_level          = NULL,
+           classification_reason  = NULL,
+           needs_manual_review    = 0,
+           scrape_status          = NULL,
+           observations           = NULL,
+           updated_at             = NOW()
+     WHERE id = ANY($1::int[])
+  `, [ids]);
+
+  // Clear stale scrape cache so dead/failed domains get fresh attempts
+  if (staleDomains.length > 0) {
+    await qp(`DELETE FROM scrape_cache WHERE domain = ANY($1::text[])`, [staleDomains]);
+  }
+
+  return reviews.length;
+}
+
 export async function getCategorizationData(funnelId: number | null, netNewFilter: string = 'netnew') {
   let query = `
-    SELECT c.id, c.company_name, c.domain, c.apollo_employees, c.employee_reo, 
+    SELECT c.id, c.company_name, c.domain, c.apollo_employees, c.employee_reo, c.crunchbase_employees,
            c.total_funding, c.crunchbase_funding, c.annual_revenue, c.revenue_reo, 
            c.company_classification, c.category, c.sub_category, c.sales_team_count,
            c.website, c.company_linkedin_url, c.manual_gtm_bucket, c.manual_gtm_reason
@@ -547,7 +607,7 @@ export async function getCategorizationData(funnelId: number | null, netNewFilte
   query += `
     c.icp_decision = 'Yes' 
     AND c.discard_reason IS NULL 
-    AND (c.apollo_employees IS NOT NULL OR c.employee_reo IS NOT NULL OR c.total_funding IS NOT NULL OR c.annual_revenue IS NOT NULL OR c.crunchbase_funding IS NOT NULL OR c.revenue_reo IS NOT NULL)
+    AND (c.apollo_employees IS NOT NULL OR c.employee_reo IS NOT NULL OR c.crunchbase_employees IS NOT NULL OR c.total_funding IS NOT NULL OR c.annual_revenue IS NOT NULL OR c.crunchbase_funding IS NOT NULL OR c.revenue_reo IS NOT NULL)
   `;
 
   if (netNewFilter === 'netnew') {

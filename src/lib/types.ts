@@ -31,6 +31,7 @@ export interface Company {
   // Dual-source enrichment (v2)
   crunchbase_funding: number | null;
   crunchbase_funding_type: string | null;
+  crunchbase_employees: number | null;
   revenue_reo: number | null;
   sales_team_count: number | null;
 
@@ -39,7 +40,7 @@ export interface Company {
   category: string | null;
   sub_category: string | null;
   company_type: string | null; // Commercially OSS | Non-OSS | etc.
-  icp_fit_level: string | null; // Legacy — kept for backward compat
+  icp_fit_level: string | null; // High | Medium | Low | Review | Not a Fit (computed)
   icp_decision: string | null; // Yes | No | Review
   confidence: string | null; // Legacy — kept for backward compat
   is_devtool: string | null;
@@ -50,7 +51,7 @@ export interface Company {
   is_sub_product: boolean;
 
   // Funnel discard tracking (v2)
-  discard_reason: string | null; // not_in_apollo | low_employees | not_icp | low_funding | dead_domain | scrape_failed
+  discard_reason: string | null; // not_enriched | low_employees | not_icp | low_funding | dead_domain | scrape_failed
   discard_step: number | null; // 2, 3, 4, 5
 
   // Manual overrides
@@ -295,14 +296,15 @@ export interface DashboardStats {
 // ── Constants ────────────────────────────────────────────────────────────
 
 export const ICP_DECISIONS = ['Yes', 'No', 'Review'] as const;
-export const ICP_FIT_LEVELS = ['Strong', 'Medium', 'Weak', 'Review', 'Not a Fit'] as const;
+export const ICP_FIT_LEVELS = ['High', 'Medium', 'Low', 'Review', 'Not a Fit'] as const;
 export const COMPANY_CLASSIFICATIONS = ['DevTool', 'IT Services & Solutions', 'Other'] as const;
 export const COMPANY_TYPES = ['Commercially OSS', 'OSS Affiliated', 'Non-OSS', 'Not a Devtool'] as const;
 export const CONFIDENCE_LEVELS = ['High', 'Medium', 'Low'] as const;
-export const DISCARD_REASONS = ['not_in_apollo', 'low_employees', 'not_icp', 'low_funding', 'dead_domain', 'scrape_failed'] as const;
+export const DISCARD_REASONS = ['not_enriched', 'low_employees', 'not_icp', 'low_funding', 'dead_domain', 'scrape_failed'] as const;
 
 export const DISCARD_REASON_LABELS: Record<string, string> = {
-  not_in_apollo: 'Not in Apollo',
+  not_enriched: 'Not Enriched',
+  not_in_apollo: 'Not in Apollo',  // Legacy — kept for backward compat with existing data
   low_employees: 'Low Employee Count',
   not_icp: 'Not ICP',
   low_funding: 'Low Funding',

@@ -110,13 +110,16 @@ WHEN SCRAPING FAILED (all data is N/A)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 If page_text, nav_text, footer_text are all N/A or empty, check scrape_status:
 
-- If scrape_status = "domain_dead": the domain is NOT operational (connection
-  refused, SSL error, DNS failure). Set is_icp = "Review",
-  reason = "Domain not operational, needs manual verification."
-
-- If scrape_status = "failed": the domain might be alive but blocked scraping.
-  Use your training knowledge if you recognise the company. If you do recognise
-  it, classify confidently. If you genuinely do not recognise it → is_icp = "Review".
+- If scrape_status = "domain_dead" OR scrape_status = "failed":
+  The scraped data is unavailable. ALWAYS try to identify the company using
+  the DOMAIN NAME and your training knowledge. Most funded tech companies
+  (especially those on Crunchbase with $35M+ funding) will be in your
+  training data.
+  • If you recognise the company → classify it normally. Use confidence
+    "Medium" (never "High" without scraped evidence).
+  • If you genuinely do NOT recognise it → is_icp = "Review".
+  NEVER default to "Review" without first attempting to identify the company
+  from the domain name. "Review" is a LAST RESORT, not a safe default.
 
 - If scrape_status = "success": use the available data normally.
 
@@ -267,10 +270,15 @@ MUST be "Yes". Your classification and reason must NEVER contradict.
 CONFIDENCE CALIBRATION:
 - High: Scraped data is clear and sufficient. You are 95%+ certain.
 - Medium: Some ambiguity — mixed signals, partial scrape, or borderline case.
-- Low: Scrape failed/thin AND relying on domain name or training knowledge.
+  ALSO use Medium when scraping failed but you CONFIDENTLY recognise the
+  company from training knowledge (e.g. well-known companies like Datadog,
+  Snowflake, CrowdStrike, Stripe, etc.).
+- Low: Scrape failed/thin AND you do NOT recognise the company at all,
   OR the company genuinely sits on a classification boundary.
-When scrape_status ≠ "success", confidence should almost never be "High".
-Borderline cases should be "Medium" or "Low", not "High" with a guess.`;
+When scrape_status ≠ "success" AND you do not recognise the company,
+confidence should be "Low". When you DO recognise it well from your
+training data, confidence can be "Medium" — never "High" without actual
+scraped evidence.`;
 
   const userPrompt = `Domain: ${signals.domain}
 Title: ${signals.title}
@@ -320,7 +328,10 @@ Scrape Status: ${signals.scrape_status}`;
     return {
       domain: signals.domain,
       is_icp: 'Review',
-      company_classification: 'Not Relevant',
+      // INTENTIONALLY left empty — NOT 'Not Relevant'. If we set 'Not Relevant'
+      // the hard rule forces icp_decision='No', creating false negatives.
+      // An empty classification falls through to the Review path safely.
+      company_classification: '',
       reason: 'Model returned malformed output — needs manual review.',
     } as ClassificationResult;
   }

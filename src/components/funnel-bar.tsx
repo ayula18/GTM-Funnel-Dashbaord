@@ -27,7 +27,7 @@ export function FunnelBar({ steps, activeStep, onStepClick, onUploadClick }: Fun
     },
     {
       step: 2,
-      label: 'In Apollo',
+      label: 'Enriched',
       total: steps.step2_apollo,
       netnew: null,
       drop: steps.step2_drop,

@@ -23,6 +23,7 @@ import { AcquiredBadge } from './acquired-badge';
 import { toast } from 'sonner';
 
 const DISCARD_REASON_LABELS: Record<string, string> = {
+  not_enriched: 'Not Enriched',
   not_in_apollo: 'Not in Apollo',
   low_employees: 'Low Employees',
   not_icp: 'Not ICP',
