@@ -309,8 +309,15 @@ export async function processRowBatch(input: ProcessRowBatchInput): Promise<Proc
   const pending: BatchChangeRow[] = [];
   const pendingDecisions: MatchDecisionRow[] = [];
 
-  await Promise.all(rawRows.map(async (row) => {
-    if (!row || row.length < 1) return;
+  // Process rows SEQUENTIALLY — each row fires ~6 DB queries
+  // (isInMasterIcp, findCompanyByDomainSmart, upsertCompanyTracked,
+  // linkCompanyToFunnel, addDomainAlias, addDataSource).
+  // Running 100 rows with Promise.all = ~600 simultaneous connections
+  // against a pool of 3 → connection exhaustion after a few chunks.
+  // Sequential is slower per-chunk but completely stable and still fast
+  // enough (each row typically takes 30-100ms, 100 rows ≈ 3-10s).
+  for (const row of rawRows) {
+    if (!row || row.length < 1) continue;
     out.total_rows++;
 
     try {
@@ -319,14 +326,14 @@ export async function processRowBatch(input: ProcessRowBatchInput): Promise<Proc
         rawDomain = row[websiteColIdx];
       }
 
-      if (!rawDomain || rawDomain.trim().length < 3) return;
+      if (!rawDomain || rawDomain.trim().length < 3) continue;
 
       const domain = normalizeDomain(rawDomain);
-      if (!domain || domain.length < 4 || !domain.includes('.')) return;
+      if (!domain || domain.length < 4 || !domain.includes('.')) continue;
 
       if (seenDomains.has(domain)) {
         out.duplicates_skipped++;
-        return;
+        continue;
       }
       seenDomains.add(domain);
 
@@ -454,7 +461,7 @@ export async function processRowBatch(input: ProcessRowBatchInput): Promise<Proc
     } catch (err) {
       out.errors.push(`Row: ${(err as Error).message}`);
     }
-  }));
+  }
 
   await recordFieldChanges(batchId, pending);
   await recordMatchDecisions(pendingDecisions);
