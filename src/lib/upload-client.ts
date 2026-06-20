@@ -14,7 +14,7 @@ export interface UploadProgress {
 // Sends the raw file as FormData to /api/upload and streams NDJSON progress.
 // Used only for files under the threshold (safe margin below Vercel/Next.js 1MB limit).
 
-const CHUNK_THRESHOLD_BYTES = 500 * 1024; // 500 KB — files above this use chunked JSON path
+const CHUNK_THRESHOLD_BYTES = 0; // Force chunked path for ALL files to avoid Vercel 60s timeout
 const ROWS_PER_CHUNK        = 25;          // 25 rows × ~6 DB queries = 150 sequential queries per chunk
                                             // ~750ms-2.5s per chunk — safe within 60s serverless limit
 
