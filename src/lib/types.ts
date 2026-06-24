@@ -212,6 +212,7 @@ export interface ClassificationResult {
   company_type: string;
   is_icp: string | boolean | null; // "Yes" | "No" | "Review" (or legacy boolean)
   confidence?: string;
+  icp_fit_level?: string;  // High | Medium | Low (direct LLM output for SDR prioritization)
   has_pricing: boolean;
   has_signup: boolean;
   is_nonprofit: boolean;

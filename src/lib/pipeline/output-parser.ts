@@ -217,13 +217,27 @@ export function parseClassificationOutput(
   }
 
   // ── Compute ICP Fit Level ─────────────────────────────────────────
-  // Derived from classification + confidence. Gives GTM a quick signal
-  // on how strong the ICP match is without reading the full reason.
-  updateData.icp_fit_level = computeIcpFitLevel(
-    decision,
-    classification,
-    confidence,
-  );
+  // Hard rules override everything: No → Not a Fit, Review → Review.
+  // For Yes: use the LLM's direct icp_fit_level output when available,
+  // fall back to derived logic for backward compatibility.
+  if (decision === 'No') {
+    updateData.icp_fit_level = 'Not a Fit';
+  } else if (decision === 'Review') {
+    updateData.icp_fit_level = 'Review';
+  } else if (
+    llmResult.icp_fit_level &&
+    ['High', 'Medium', 'Low'].includes(llmResult.icp_fit_level)
+  ) {
+    // LLM returned a valid fit level for an ICP=Yes company — use it
+    updateData.icp_fit_level = llmResult.icp_fit_level;
+  } else {
+    // Fallback: derive from classification + confidence (old logic)
+    updateData.icp_fit_level = computeIcpFitLevel(
+      decision,
+      classification,
+      confidence,
+    );
+  }
 
   // ── Set manual review flag ────────────────────────────────────────
   if (decision === 'Review') {

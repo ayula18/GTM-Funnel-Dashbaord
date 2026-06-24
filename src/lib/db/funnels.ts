@@ -191,15 +191,15 @@ export async function getFunnelDailyInsights(funnelId: number) {
 
   const rows = await qp(`
     SELECT
-      DATE(c.created_at) as date,
+      DATE(fc.added_at) as date,
       COUNT(*) as total_checked,
       COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4} AND c.is_netnew = 1 AND c.company_classification IN ('DevTool', 'DevTools')) as icps_devtool,
       COUNT(*) FILTER (WHERE ${g2} AND ${g3} AND ${g4} AND c.is_netnew = 1 AND c.company_classification = 'IT Services & Solutions') as icps_it
     FROM funnel_companies fc
     JOIN companies c ON fc.company_id = c.id
     WHERE fc.funnel_id = $1 AND c.merged_into_id IS NULL
-    GROUP BY DATE(c.created_at)
-    ORDER BY DATE(c.created_at) ASC
+    GROUP BY DATE(fc.added_at)
+    ORDER BY DATE(fc.added_at) ASC
   `, [funnelId]);
 
   return rows.map((r: any) => ({

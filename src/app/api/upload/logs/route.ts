@@ -17,7 +17,11 @@ export async function GET() {
         ub.fields_updated,
         ub.skipped_fields,
         ub.created_at,
-        f.name as funnel_name
+        COALESCE(ub.chunks_total, 0)    AS chunks_total,
+        COALESCE(ub.chunks_done, 0)     AS chunks_done,
+        COALESCE(ub.total_file_rows, 0) AS total_file_rows,
+        f.name as funnel_name,
+        f.id   as funnel_id
       FROM upload_batches ub
       LEFT JOIN funnels f ON ub.funnel_id = f.id
       ORDER BY ub.created_at DESC

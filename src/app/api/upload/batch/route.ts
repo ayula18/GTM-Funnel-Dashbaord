@@ -22,7 +22,7 @@ import { NextResponse } from 'next/server';
 import { errorMessage } from '@/lib/utils';
 import {
   createFunnel, computeDiscardReasons, createUploadBatch, finalizeUploadBatch,
-  deleteUploadBatch, ensureMatchDecisionsTable, scanForDuplicates,
+  deleteUploadBatch, ensureMatchDecisionsTable, scanForDuplicates, updateChunkProgress,
 } from '@/lib/db';
 import { processRowBatch } from '@/lib/csv-parser';
 import type { CsvSourceType, UploadResult } from '@/lib/types';
@@ -61,6 +61,9 @@ interface BatchChunkRequest {
   isFirst?: boolean;
   isLast?: boolean;
 
+  // Total chunk count in the file (for resume tracking)
+  chunksTotal?: number;
+
   // Running totals from previous chunks (client echoes back)
   prevTotals?: Partial<UploadResult>;
 }
@@ -73,6 +76,7 @@ export async function POST(request: Request) {
       columnMapping, domainHeader, websiteHeader,
       rows, batchId: existingBatchId, seenDomains: seenDomainsArr = [],
       isFirst = false, isLast = false,
+      chunksTotal = 0,
       prevTotals = {},
     } = body;
 
@@ -143,6 +147,8 @@ export async function POST(request: Request) {
         source_file:       fileName ?? null,
         mapping:           columnMapping,
         is_manual_mapping: true,
+        chunks_total:      chunksTotal,
+        total_file_rows:   chunksTotal * 25, // approximate; exact on first chunk
       });
     }
 
@@ -182,6 +188,16 @@ export async function POST(request: Request) {
       (totals.fields_updated as Record<string, number>)[f] = ((totals.fields_updated as Record<string, number>)[f] || 0) + c;
     for (const [f, c] of Object.entries(chunkStats.skipped_fields))
       (totals.skipped_fields as Record<string, number>)[f] = ((totals.skipped_fields as Record<string, number>)[f] || 0) + c;
+
+    // ── Update chunk progress ─────────────────────────────────────────────────
+    // Track how many chunks have been committed so the resume endpoint can
+    // reconstruct the exact state if the browser drops mid-upload.
+    if (batchId) {
+      const chunkIndex = Math.round(
+        ((prevTotals.total_rows ?? 0) + chunkStats.total_rows) / 25,
+      );
+      await updateChunkProgress(batchId, chunkIndex).catch(() => { /* non-fatal */ });
+    }
 
     // ── Finalize on last chunk ────────────────────────────────────────────────
     if (isLast) {

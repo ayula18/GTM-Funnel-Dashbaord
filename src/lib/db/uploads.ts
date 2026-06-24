@@ -12,21 +12,54 @@ export interface BatchMeta {
   source_file: string | null;
   mapping: Record<string, string> | null;
   is_manual_mapping: boolean;
+  /** Total number of 25-row chunks in the file (for resume tracking). */
+  chunks_total?: number;
+  /** Total rows in the source file (for progress display). */
+  total_file_rows?: number;
 }
 
 export async function createUploadBatch(meta: BatchMeta): Promise<number> {
   const rows = await qp(
-    `INSERT INTO upload_batches (funnel_id, source_type, source_file, mapping, is_manual_mapping, status)
-     VALUES ($1, $2, $3, $4::jsonb, $5, 'applied') RETURNING id`,
+    `INSERT INTO upload_batches
+       (funnel_id, source_type, source_file, mapping, is_manual_mapping, status,
+        chunks_total, chunks_done, total_file_rows)
+     VALUES ($1, $2, $3, $4::jsonb, $5, 'applied', $6, 0, $7)
+     RETURNING id`,
     [
       meta.funnel_id,
       meta.source_type,
       meta.source_file,
       meta.mapping ? JSON.stringify(meta.mapping) : null,
       meta.is_manual_mapping ? 1 : 0,
+      meta.chunks_total ?? 0,
+      meta.total_file_rows ?? 0,
     ],
   );
   return rows[0].id as number;
+}
+
+/**
+ * Mark one more chunk as successfully committed.
+ * Called by the batch route after each chunk is processed.
+ */
+export async function updateChunkProgress(batchId: number, chunksDone: number): Promise<void> {
+  await qp(
+    'UPDATE upload_batches SET chunks_done = $2 WHERE id = $1',
+    [batchId, chunksDone],
+  );
+}
+
+/**
+ * Reconstruct the set of already-processed domains for a batch by querying
+ * match_decisions. Used by the resume endpoint so the client never has to
+ * remember seenDomains across browser sessions.
+ */
+export async function getSeenDomainsForBatch(batchId: number): Promise<string[]> {
+  const rows = await qp<{ input_domain: string }>(
+    'SELECT input_domain FROM match_decisions WHERE batch_id = $1',
+    [batchId],
+  );
+  return rows.map(r => r.input_domain);
 }
 
 export interface BatchChangeRow extends FieldChange {

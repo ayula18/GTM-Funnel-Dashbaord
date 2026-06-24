@@ -1,6 +1,9 @@
 import type { UploadResult, CsvSourceType } from './types';
 import Papa from 'papaparse';
 import { autoMapField } from './csv-detect';
+import {
+  saveSession, clearSession, type UploadSession,
+} from './upload-session';
 
 export interface UploadProgress {
   processed: number;
@@ -8,23 +11,18 @@ export interface UploadProgress {
   pct: number;
   finalizing?: boolean;
   phase?: string;
+  /** Set during a resume so the UI can show "Resuming from X%" */
+  resumeFromPct?: number;
 }
 
 // ─── Small-file path (≤ CHUNK_THRESHOLD) ─────────────────────────────────────
 // Sends the raw file as FormData to /api/upload and streams NDJSON progress.
-// Used only for files under the threshold (safe margin below Vercel/Next.js 1MB limit).
 
 const CHUNK_THRESHOLD_BYTES = 0; // Force chunked path for ALL files to avoid Vercel 60s timeout
-const ROWS_PER_CHUNK        = 25;          // 25 rows × ~6 DB queries = 150 sequential queries per chunk
-                                            // ~750ms-2.5s per chunk — safe within 60s serverless limit
+const ROWS_PER_CHUNK        = 25;
 
 /**
  * POST a CSV to /api/upload and stream live progress.
- *
- * The companies endpoint responds with NDJSON ({type:"progress"} lines, then a
- * final {type:"done"|"error"}). This reader surfaces progress via `onProgress`
- * and resolves with the final UploadResult. Non-streaming responses (validation
- * errors, the master-list path) are handled as plain JSON.
  */
 export async function uploadCsv(
   formData: FormData,
@@ -99,28 +97,36 @@ export async function uploadCsv(
   return result;
 }
 
-// ─── Chunked path (> CHUNK_THRESHOLD) ────────────────────────────────────────
-// PapaParse reads the CSV entirely in the browser (no size limit — it's local),
-// builds the row objects using the resolved column mapping, splits into
-// ROWS_PER_CHUNK batches, and POSTs each to /api/upload/batch. Each request is
-// ~100–200 KB JSON — far below the 4.5 MB Vercel limit. The seenDomains set
-// is echoed back from the server so deduplication spans the whole file.
+// ─── Chunked path ─────────────────────────────────────────────────────────────
 
 export interface ChunkedUploadOptions {
   file: File;
   funnelId: number;
   funnelName?: string;
   sourceType: CsvSourceType;
-  /** header → field mapping from the upload UI */
   columnMapping: Record<string, string>;
-  /** the header name whose values are domains (or websites) */
   domainHeader: string;
   websiteHeader?: string;
   onProgress?: (p: UploadProgress) => void;
+  /** When resuming, start from this chunk index (0-based). */
+  resumeFromChunk?: number;
+  /** When resuming, the batchId already created on the server. */
+  resumeBatchId?: number;
+  /** When resuming, seenDomains reconstructed from the server. */
+  resumeSeenDomains?: string[];
+  /** When resuming, running totals at the checkpoint. */
+  resumePrevTotals?: Partial<UploadResult>;
 }
 
 export async function uploadCsvChunked(opts: ChunkedUploadOptions): Promise<UploadResult> {
-  const { file, funnelName, sourceType, columnMapping, domainHeader, websiteHeader, onProgress } = opts;
+  const {
+    file, funnelName, sourceType, columnMapping, domainHeader, websiteHeader,
+    onProgress,
+    resumeFromChunk = 0,
+    resumeBatchId,
+    resumeSeenDomains,
+    resumePrevTotals,
+  } = opts;
   let funnelId = opts.funnelId;
 
   // ── 1. Parse entire CSV in the browser ──────────────────────────────────
@@ -148,16 +154,33 @@ export async function uploadCsvChunked(opts: ChunkedUploadOptions): Promise<Uplo
     chunks.push(allRows.slice(i, i + ROWS_PER_CHUNK));
   }
 
+  const chunksTotal = chunks.length;
+
   // ── 3. POST each chunk sequentially ─────────────────────────────────────
-  let batchId: number | undefined;
-  let seenDomains: string[] = [];
-  let prevTotals: Partial<UploadResult> = {};
-  let processedRows = 0;
+  let batchId: number | undefined = resumeBatchId;
+  let seenDomains: string[] = resumeSeenDomains ?? [];
+  let prevTotals: Partial<UploadResult> = resumePrevTotals ?? {};
+  // Rows already committed (from previous chunks in a resume)
+  let processedRows = resumeFromChunk * ROWS_PER_CHUNK;
   let finalResult: UploadResult | null = null;
 
-  for (let chunkIdx = 0; chunkIdx < chunks.length; chunkIdx++) {
+  // Stored session for checkpointing (set after we know the batchId)
+  let session: UploadSession | null = null;
+
+  // On resume, report starting progress
+  if (resumeFromChunk > 0) {
+    onProgress?.({
+      processed: processedRows,
+      total: totalRows,
+      pct: Math.min(100, Math.round((processedRows / totalRows) * 100)),
+      phase: 'resuming',
+      resumeFromPct: Math.round((processedRows / totalRows) * 100),
+    });
+  }
+
+  for (let chunkIdx = resumeFromChunk; chunkIdx < chunks.length; chunkIdx++) {
     const chunk = chunks[chunkIdx];
-    const isFirst = chunkIdx === 0;
+    const isFirst = chunkIdx === 0 && !resumeBatchId; // not first when resuming
     const isLast  = chunkIdx === chunks.length - 1;
 
     const body = {
@@ -173,6 +196,7 @@ export async function uploadCsvChunked(opts: ChunkedUploadOptions): Promise<Uplo
       seenDomains,
       isFirst,
       isLast,
+      chunksTotal,
       prevTotals,
     };
 
@@ -191,6 +215,7 @@ export async function uploadCsvChunked(opts: ChunkedUploadOptions): Promise<Uplo
       } catch {
         if (text) errorDesc += `: ${text.slice(0, 100)}`;
       }
+      // Session is left in localStorage — user can resume
       throw new Error(errorDesc);
     }
 
@@ -205,11 +230,38 @@ export async function uploadCsvChunked(opts: ChunkedUploadOptions): Promise<Uplo
     seenDomains = data.seenDomains ?? seenDomains;
     prevTotals  = data.totals ?? prevTotals;
 
-    // When creating a new funnel (funnelId was 0), the server returns the real
-    // ID in totals.funnel_id. Use it for all subsequent chunks.
+    // When creating a new funnel (funnelId was 0), server returns the real ID
     if (data.totals?.funnel_id) funnelId = data.totals.funnel_id as number;
 
     processedRows += chunk.length;
+
+    // ── Checkpoint to localStorage after each successful chunk ───────────
+    if (!session) {
+      // First successful chunk — create the session record
+      session = {
+        batchId: batchId!,
+        funnelId,
+        funnelName: funnelName ?? '',
+        fileName:   file.name,
+        fileSize:   file.size,
+        sourceType,
+        columnMapping,
+        domainHeader,
+        websiteHeader,
+        totalRows,
+        chunksTotal,
+        chunksDone: chunkIdx,
+        prevTotals,
+        startedAt:  new Date().toISOString(),
+        updatedAt:  new Date().toISOString(),
+      };
+    } else {
+      session.chunksDone = chunkIdx;
+      session.prevTotals = prevTotals;
+      session.funnelId   = funnelId; // may have changed if new funnel was created
+    }
+    saveSession(session);
+
     onProgress?.({
       processed:  processedRows,
       total:      totalRows,
@@ -225,17 +277,69 @@ export async function uploadCsvChunked(opts: ChunkedUploadOptions): Promise<Uplo
 
   onProgress?.({ processed: totalRows, total: totalRows, pct: 100, finalizing: false });
 
+  // ── Clear the session on success ─────────────────────────────────────────
+  if (batchId) clearSession(batchId);
+
   if (!finalResult) throw new Error('Upload ended without a final result');
   return finalResult;
 }
 
+// ─── Resume an interrupted upload ────────────────────────────────────────────
+
+/**
+ * Validate that a re-selected file matches the original session file,
+ * then reconstruct seenDomains from the server and continue from where
+ * the upload left off.
+ */
+export async function resumeUploadSession(
+  session: UploadSession,
+  file: File,
+  onProgress?: (p: UploadProgress) => void,
+): Promise<UploadResult> {
+  // Validate the re-selected file
+  if (file.name !== session.fileName || file.size !== session.fileSize) {
+    throw new Error(
+      `File mismatch — please select "${session.fileName}" (${(session.fileSize / 1024).toFixed(0)} KB).`,
+    );
+  }
+
+  // Fetch seenDomains from the server (reconstructed from match_decisions)
+  const resumeRes = await fetch(`/api/upload/batch/resume?batchId=${session.batchId}`);
+  if (!resumeRes.ok) {
+    const err = await resumeRes.json().catch(() => ({ error: 'Resume failed' }));
+    throw new Error(err.error || 'Failed to fetch resume state from server');
+  }
+  const resumeData = await resumeRes.json() as {
+    seenDomains: string[];
+    chunksDone: number;
+    chunksTotal: number;
+    prevTotals: Partial<UploadResult>;
+  };
+
+  // Use the server's authoritative chunk count (more reliable than localStorage)
+  const startFromChunk = resumeData.chunksDone + 1;
+
+  return uploadCsvChunked({
+    file,
+    funnelId:           session.funnelId,
+    funnelName:         session.funnelName,
+    sourceType:         session.sourceType,
+    columnMapping:      session.columnMapping,
+    domainHeader:       session.domainHeader,
+    websiteHeader:      session.websiteHeader,
+    onProgress,
+    resumeFromChunk:    startFromChunk,
+    resumeBatchId:      session.batchId,
+    resumeSeenDomains:  resumeData.seenDomains,
+    resumePrevTotals:   resumeData.prevTotals,
+  });
+}
+
 // ─── Unified entry point ──────────────────────────────────────────────────────
-// Transparently routes to the chunked or streaming path based on file size.
-// Used by upload-to-funnel-dialog so all upload surfaces benefit automatically.
 
 export interface UnifiedUploadOptions {
   file: File;
-  formData: FormData;         // pre-built for the streaming path
+  formData: FormData;
   sourceType: CsvSourceType;
   columnMapping: Record<string, string>;
   domainHeader: string;
@@ -249,12 +353,10 @@ export async function uploadCsvUnified(opts: UnifiedUploadOptions): Promise<Uplo
   const { file, formData, sourceType, columnMapping, domainHeader, websiteHeader, funnelId, funnelName, onProgress } = opts;
 
   if (file.size > CHUNK_THRESHOLD_BYTES) {
-    // Large file — chunked JSON path (bypasses 4.5 MB limit)
     return uploadCsvChunked({
       file, funnelId, funnelName, sourceType, columnMapping, domainHeader, websiteHeader, onProgress,
     });
   }
 
-  // Small file — existing streaming FormData path (unchanged)
   return uploadCsv(formData, onProgress);
 }

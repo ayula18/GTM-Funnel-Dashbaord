@@ -36,13 +36,26 @@ STEP 1: DETERMINE WHAT THE COMPANY DOES.
   NEVER output is_icp = "No" when you do not know what the company does.
 
 STEP 2: IDENTIFY THE PRIMARY END USER.
-  Who uses this product/service day-to-day in their actual work?
-  Apply the principle: does this person's daily work involve BUILDING,
-  SHIPPING, RUNNING, OBSERVING, or SECURING technical systems?
-  • If YES → proceed to Step 3.
-  • If the end user is clearly non-technical (their work does not involve
-    building or operating technical systems) → is_icp = "No",
-    company_classification = "Not Relevant".
+   Who uses this product/service day-to-day in their actual work?
+   Apply the principle: does this person's daily work involve BUILDING,
+   SHIPPING, RUNNING, OBSERVING, or SECURING technical systems?
+   • If YES → proceed to Step 3.
+   • If the end user is clearly non-technical (their work does not involve
+     building or operating technical systems) → is_icp = "No",
+     company_classification = "Not Relevant".
+
+   THE STRIP TEST (apply this whenever you are unsure):
+   Mentally strip away the technology layer from the product. What JOB is
+   the end user doing? If that job existed before software was invented
+   (managing a fleet of trucks, planning finances, treating patients,
+   dispatching logistics, managing legal contracts), and the person's core
+   professional skill is NOT software engineering, then they are NOT the
+   engineering function — no matter how sophisticated, AI-powered, or
+   API-rich the software is.
+   A fleet manager using an AI-powered fleet dashboard is still a fleet
+   manager, not an engineer. A finance analyst using an AI-powered FP&A
+   tool is still a finance analyst. A doctor using an AI diagnostic tool
+   is still a doctor. The SOFTWARE is smart, but the USER is non-technical.
 
 STEP 3: PRODUCT OR SERVICES?
   • Company sells a SOFTWARE PRODUCT (has pricing/signup/docs/downloads,
@@ -127,9 +140,71 @@ customers. When in doubt → "Review".
 API DOES NOT EQUAL DEVTOOL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Every SaaS has APIs. Having an API does NOT make it a devtool.
-The question is: who is the PRIMARY end user of the core product?
+The question is: who is the PRIMARY end user of the CORE product?
 - Stripe (primary user = developer integrating payments) → DevTool
 - HubSpot (primary user = marketer, API is secondary) → Not Relevant
+- Wise / OKX / 1inch (primary user = retail consumer or crypto trader, API is secondary) → Not Relevant
+- LoanPro / Kissflow (primary user = loan officer or business ops, API is secondary) → Not Relevant
+- Brevo (primary user = marketer sending campaigns, API is secondary) → Not Relevant
+- Genesys (primary user = contact center agent, developer APIs exist for customisation) → Not Relevant
+- Odoo (primary user = business operations, has module framework) → Not Relevant
+
+THE LITMUS TEST: Mentally remove the API/SDK/developer-docs from the
+product. Is the remaining core product STILL used by engineers? If yes →
+DevTool. If the core product is for marketers, fleet managers, finance
+teams, or any other non-engineering role → Not Relevant, even if it has
+a world-class API.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INDUSTRY SOFTWARE ≠ DEVTOOL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Many companies build sophisticated software for SPECIFIC INDUSTRIES.
+The software may use AI, have APIs, and be technically impressive — but
+if the PRIMARY end user is an industry professional (not an engineer),
+it is NOT a devtool.
+
+The general principle: if the company's product automates or digitises
+a NON-ENGINEERING business function, the end user is the person who
+performs that function, not an engineer. Apply the Strip Test.
+
+Common traps (these are NOT devtools):
+• Logistics/supply chain/fleet management → users are logistics planners,
+  fleet managers, drivers, dispatch operators
+• ERP/finance/accounting/treasury → users are finance teams, accountants,
+  procurement staff, CFOs
+• Healthcare/clinical/pharma → users are doctors, nurses, clinicians,
+  pharmacists, researchers
+• Legal tech/contract management → users are lawyers, legal ops, paralegals
+• AgriTech/farming platforms → users are agricultural managers, farmers
+• Construction/property management → users are site managers, contractors
+• Insurance/wealth management → users are advisors, underwriters, agents
+
+EXCEPTION — INFRASTRUCTURE FOR DEVELOPERS:
+Some companies serve these industries but sell DEVELOPER INFRASTRUCTURE:
+- Stripe/Plaid (financial APIs for developers) → DevTool ✅
+- Veeva (CRM for pharma sales teams) → Not Relevant ❌
+- Health data APIs (FHIR platforms for developers) → DevTool ✅
+- Hospital management software (for clinicians) → Not Relevant ❌
+
+The distinguishing test: does a SOFTWARE ENGINEER at a tech company
+integrate this product into their application via code? Or does an
+INDUSTRY PROFESSIONAL use it through a GUI to do their domain job?
+
+HARDWARE COMPANIES:
+Companies that primarily build PHYSICAL PRODUCTS (robots, drones,
+satellites, LiDAR, autonomous vehicles, displays, sensors) are NOT
+devtools, even if they use sophisticated software internally.
+The test: is the thing being sold a SOFTWARE TOOL for engineers, or
+a PHYSICAL DEVICE? Physical devices → Not Relevant.
+EXCEPTION: Robotics SOFTWARE PLATFORMS that engineers use to program,
+simulate, or orchestrate robots (e.g. ROS tooling) → DevTool.
+
+AI-POWERED ≠ ENGINEERING:
+A company using AI internally to power its product does NOT make it a
+devtool. BenevolentAI uses ML for drug discovery → their user is a
+pharmaceutical researcher, NOT an ML engineer. The test: does the
+company sell AI/ML TOOLS TO engineers, or does it USE AI to serve
+non-engineering users? Only the former is ICP.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRODUCT vs SERVICES signals
@@ -173,6 +248,43 @@ ANTI-ICP — ALWAYS "Not Relevant"
   Do NOT confuse ITSM with infrastructure tools. Enterprise Linux (SUSE,
   Red Hat), virtualisation (VMware), container platforms, cloud platforms
   are used by infrastructure engineers — they ARE engineering function → ICP.
+
+• LOGISTICS, SUPPLY CHAIN & FLEET MANAGEMENT:
+  Fleet tracking, route optimisation, transport management, telematics,
+  freight forwarding, warehouse management (non-robotic), delivery ops.
+  Users are fleet managers, logistics planners, drivers, dispatchers.
+  Examples: Motive, Samsara, FarEye, Pando, FleetX, FareEye.
+  → Not Relevant.
+
+• ERP, FINANCE & PROCUREMENT:
+  ERP systems, AP/AR automation, treasury, procurement, FP&A, wealth
+  management, accounting. Users are finance teams, not engineers.
+  Examples: Odoo, SAP, IFS, HighRadius, Pigment, Vendr, GTreasury.
+  → Not Relevant.
+  EXCEPTION: Financial INFRASTRUCTURE APIs (Stripe, Plaid) → DevTool.
+
+• HEALTHCARE & LIFE SCIENCES:
+  EHR, clinical decision support, hospital management, drug discovery,
+  telemedicine, medical imaging. Users are clinicians/researchers.
+  Examples: Dedalus, Epic, Cerner, BenevolentAI.
+  → Not Relevant.
+  EXCEPTION: Health data APIs/platforms for developers → DevTool.
+
+• HARDWARE, ROBOTICS & AEROSPACE:
+  Physical robots, drones, satellites, autonomous vehicles, sensors,
+  LiDAR, displays. The product is a physical device, not a software tool.
+  Examples: 3DR, Agile Robots, Bear Robotics, ABL Space, Aeva.
+  → Not Relevant.
+  EXCEPTION: Robotics software platforms for engineers → DevTool.
+
+• CONTACT CENTER & CUSTOMER ENGAGEMENT:
+  Contact center platforms, customer support chatbots, help desk,
+  customer engagement / communications (non-infrastructure).
+  Users are support agents, CS managers. Having APIs ≠ devtool.
+  Examples: Genesys, Zendesk, Intercom, Five9.
+  → Not Relevant.
+  EXCEPTION: Communications INFRASTRUCTURE (Twilio, Vonage) where
+  engineers integrate messaging/voice via code → DevTool.
 
 • DEVELOPER EDUCATION & TRAINING:
   Coding bootcamps, online course platforms, certification programs,
@@ -229,7 +341,11 @@ CALIBRATION EXAMPLES
 
 ❌ Not Relevant → ICP No:
   Sendspark, Calendly, HubSpot, Monday.com, Shopify,
-  Salesforce, ServiceNow, Workday, Zendesk
+  Salesforce, ServiceNow, Workday, Zendesk,
+  Brevo (email marketing), Odoo (ERP), HighRadius (finance automation),
+  Genesys (contact center), Motive (fleet management), Dedalus (healthcare),
+  BenevolentAI (drug discovery), Bear Robotics (food service robots),
+  Pigment (financial planning), Ironclad (legal contracts)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OUTPUT — return ONLY valid JSON
@@ -243,6 +359,7 @@ OUTPUT — return ONLY valid JSON
   "company_type": "Commercially OSS | OSS Affiliated | Non-OSS | Not a Devtool",
   "is_icp": "Yes | No | Review",
   "confidence": "High | Medium | Low",
+  "icp_fit_level": "High | Medium | Low | Not a Fit",
   "has_pricing": true or false,
   "has_signup": true or false,
   "is_nonprofit": true or false,
@@ -258,11 +375,19 @@ HARD RULES:
 - If end users BUILD, SHIP, RUN, OBSERVE, or SECURE technical systems → ICP Yes. No exceptions.
 
 SELF-CONSISTENCY CHECK (do this BEFORE outputting):
-Re-read your "reason" field. Does your reason describe the company as
-"Not Relevant" or say the end users are not in engineering? Then your
-company_classification MUST be "Not Relevant" and is_icp MUST be "No".
-Does your reason describe a devtool or engineering service? Then is_icp
-MUST be "Yes". Your classification and reason must NEVER contradict.
+1. Re-read your "reason" field. Does your reason describe the company as
+   "Not Relevant" or say the end users are not in engineering? Then your
+   company_classification MUST be "Not Relevant" and is_icp MUST be "No".
+   Does your reason describe a devtool or engineering service? Then is_icp
+   MUST be "Yes". Your classification and reason must NEVER contradict.
+
+2. DEVIL'S ADVOCATE: Before confirming is_icp = "Yes", ask yourself:
+   "If I strip away the API docs, the AI buzzwords, and the tech jargon
+   from this company's website — what is the ACTUAL JOB of the person
+   using this product every day? Is that person a software engineer, or
+   are they a [fleet manager / accountant / doctor / logistics planner /
+   marketer / support agent]?"
+   If the answer is a non-engineering role → flip to "Not Relevant".
 
 CONFIDENCE CALIBRATION:
 - High: Scraped data is clear and sufficient. You are 95%+ certain.
@@ -275,7 +400,89 @@ CONFIDENCE CALIBRATION:
 When scrape_status ≠ "success" AND you do not recognise the company,
 confidence should be "Low". When you DO recognise it well from your
 training data, confidence can be "Medium" — never "High" without actual
-scraped evidence.`;
+scraped evidence.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ICP FIT LEVEL — SDR PRIORITIZATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This tells the sales team HOW STRONG a fit this company is for Reo.Dev.
+It is NOT about your confidence in the data — it is about HOW CENTRAL
+the engineering function is to this company's go-to-market.
+
+High Fit:
+  The company IS a DevTool / Developer Infrastructure company.
+  The PRIMARY buyer is an engineering leader (VP Eng, CTO, Staff Eng).
+  The PRIMARY user is someone on a technical engineering team doing
+  technical work daily (writing code, managing infra, running security
+  scans, building data pipelines, etc.).
+  The product would not exist without the engineering persona.
+  Examples: Datadog, HashiCorp, Snyk, PagerDuty, LaunchDarkly, Vercel,
+  Confluent, Cloudflare, CrowdStrike, Elastic, Grafana, GitLab.
+
+  Categories that are ALMOST ALWAYS High Fit:
+  CI/CD & Build Systems, Observability & APM, Logging & Tracing,
+  Container & Orchestration, Infrastructure as Code,
+  Cloud & Runtime Security, Application Security (SAST/DAST/SCA),
+  Database & Storage, AI/ML Infrastructure & MLOps,
+  AI Developer Tools & LLM Infra, Code Quality & Static Analysis,
+  Incident Management & On-Call, API Platform & Gateway,
+  Source Code Management & Version Control,
+  IDE & Developer Productivity, Testing & QA Automation,
+  Feature Management & Experimentation, Secret Management & PKI,
+  Data Infrastructure & Pipelines, Data Streaming & Messaging,
+  FinOps & Cloud Cost Management, Networking & Service Mesh,
+  Supply Chain & Container Security, Chaos Engineering & Reliability,
+  Serverless & Edge Computing, Artifact & Package Management.
+
+Medium Fit:
+  The company serves engineering teams but is NOT a pure DevTool.
+  Engineering is ONE OF the key personas but not the ONLY one. Or the
+  product is infrastructure that engineers integrate but the commercial
+  relationship may involve non-engineering buyers too.
+
+  Typical Medium Fit profiles:
+  • IT Services & Solutions companies (Cloud Consulting, DevOps
+    Outsourcing, Managed Infrastructure, System Integration)
+  • Payments & FinTech Infrastructure (Stripe, Plaid — engineers
+    integrate, but buyer is often a product/biz leader)
+  • Low-Code & Internal Tooling (Retool, Airtable — used by devs
+    but also by ops teams)
+  • Content Management Systems (Contentful, Strapi — devs use the
+    API, but content teams also use the CMS)
+  • Blockchain Infrastructure (Alchemy, QuickNode — used by Web3
+    devs, but the ecosystem is niche)
+  • Workflow Automation & iPaaS (n8n, Tray.io — developer-oriented
+    but also used by technical ops)
+  • Cloud Infrastructure & Compute companies that are primarily
+    hosting providers or managed services
+  • Cybersecurity companies where the product is primarily deployed
+    by a security ops team (not AppSec or DevSecOps)
+  • Developer Communications Infra (Twilio-like — API-first but
+    the buyer may be product, not engineering)
+
+Low Fit:
+  The company passed the ICP test but sits on the boundary.
+  Engineering is a secondary or partial user.
+
+  Typical Low Fit profiles:
+  • Niche consulting agencies with limited DevOps or cloud practice
+  • Companies where scrape data was too thin to fully assess, AND
+    you do not recognise the company from training data
+  • Products that technically serve engineers but in a very narrow,
+    non-core capacity
+  • Companies classified as ICP only because of their dev API, where
+    the broader product serves multiple non-engineering teams equally
+
+Not a Fit:
+  The company is NOT ICP. is_icp = "No".
+  Use "Not a Fit" whenever is_icp = "No".
+
+IMPORTANT RULES:
+- is_icp = "Yes" → icp_fit_level MUST be "High", "Medium", or "Low".
+- is_icp = "No" → icp_fit_level MUST be "Not a Fit".
+- is_icp = "Review" → icp_fit_level MUST be "Low".
+- NEVER output icp_fit_level = "Not a Fit" when is_icp = "Yes".
+- NEVER output icp_fit_level = "High" when is_icp = "No".`;
 
   const userPrompt = `Domain: ${signals.domain}
 Title: ${signals.title}
