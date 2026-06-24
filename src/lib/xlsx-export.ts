@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { getCompanies, getFunnel, getFunnelSteps, getFunnelDailyInsights } from './db';
 import { getCategorizationData } from './db/companies';
 import { getBucketId, BUCKET_META } from './bucketing';
+import { mapCategoryToGtmSegment, GtmSegment } from './category-mapping';
 import type { FunnelSteps, Company } from './types';
 
 // ── Funnel → multi-tab Excel workbook ────────────────────────────────────────
@@ -108,7 +109,7 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
   wb.created = new Date();
 
   const dailyInsights = await getFunnelDailyInsights(funnelId);
-  buildInsightsSheet(wb, steps, dailyInsights);
+  buildInsightsSheet(wb, steps, dailyInsights, companies);
 
   // Render a sheet from explicit [field key, header] pairs (exact wording/order).
   const addSheetWithHeaders = (name: string, cols: Array<[string, string]>, rows: Row[]) => {
@@ -175,7 +176,7 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
   return { buffer, funnelName };
 }
 
-function buildInsightsSheet(wb: ExcelJS.Workbook, steps: FunnelSteps, dailyInsights: any[]) {
+function buildInsightsSheet(wb: ExcelJS.Workbook, steps: FunnelSteps, dailyInsights: any[], companies: Row[]) {
   const ws = wb.addWorksheet('Insights', { views: [{ showGridLines: false }] });
   
   // Funnel View Section
@@ -303,12 +304,81 @@ function buildInsightsSheet(wb: ExcelJS.Workbook, steps: FunnelSteps, dailyInsig
     }
   }
 
-  currentRow++;
+  currentRow += 2;
   ws.mergeCells(`A${currentRow}:D${currentRow}`);
   const footer = ws.getCell(`A${currentRow}`);
   footer.value = '* Developer focussed companies > 1 emp, Note funding data not checked for this yet';
   footer.font = { size: 10 };
   footer.alignment = { horizontal: 'left', vertical: 'middle' };
+
+  // Category Breakdown Heatmap
+  currentRow += 3;
+  ws.mergeCells(`A${currentRow}:E${currentRow}`);
+  const title3 = ws.getCell(`A${currentRow}`);
+  title3.value = 'Category Heatmap (Qualified Companies)';
+  title3.font = { bold: true, size: 12 };
+  title3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF68A2EB' } };
+  title3.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  currentRow++;
+  ws.getCell(`A${currentRow}`).value = 'GTM Segment';
+  ws.getCell(`B${currentRow}`).value = 'Classification';
+  ws.getCell(`C${currentRow}`).value = 'Total Qualified';
+  ws.getCell(`D${currentRow}`).value = 'NetNew Accounts';
+  
+  const heatmapHeader = ws.getRow(currentRow);
+  heatmapHeader.font = { bold: true };
+  heatmapHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F2FF' } };
+  heatmapHeader.alignment = { horizontal: 'center', vertical: 'middle' };
+  
+  const heatmapStartRow = currentRow;
+
+  // Compute breakdown
+  type SegmentData = { classification: string, total: number, netnew: number };
+  const breakdown = new Map<GtmSegment, SegmentData>();
+
+  for (const c of companies) {
+    if (c.icp_decision !== 'Yes') continue;
+    
+    const classification = String(c.company_classification || '').trim();
+    if (classification !== 'DevTool' && classification !== 'IT Services & Solutions') continue;
+
+    const segment = mapCategoryToGtmSegment(String(c.category || ''), classification);
+    const isNetNew = Number(c.is_netnew) === 1;
+
+    let data = breakdown.get(segment);
+    if (!data) {
+      data = { classification, total: 0, netnew: 0 };
+      breakdown.set(segment, data);
+    }
+    
+    data.total += 1;
+    if (isNetNew) data.netnew += 1;
+  }
+
+  const sortedSegments = Array.from(breakdown.entries()).sort((a, b) => b[1].netnew - a[1].netnew);
+
+  for (const [segment, data] of sortedSegments) {
+    currentRow++;
+    ws.getCell(`A${currentRow}`).value = segment;
+    ws.getCell(`B${currentRow}`).value = data.classification;
+    ws.getCell(`C${currentRow}`).value = data.total;
+    ws.getCell(`D${currentRow}`).value = data.netnew;
+    ws.getRow(currentRow).alignment = { horizontal: 'center', vertical: 'middle' };
+  }
+
+  // Add borders to the third table
+  for (let r = heatmapStartRow; r <= currentRow; r++) {
+    for (let c = 1; c <= 4; c++) {
+      const cell = ws.getCell(r, c);
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+        left: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+        bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+        right: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+      };
+    }
+  }
 }
 
 function buildSummarySheet(wb: ExcelJS.Workbook, funnel: Row, steps: FunnelSteps) {

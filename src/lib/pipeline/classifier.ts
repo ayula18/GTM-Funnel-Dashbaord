@@ -230,7 +230,7 @@ create a new descriptive category name.
 ${CATEGORIES.map(c => `- ${c}`).join('\n')}
 
 For IT Services & Solutions: describe their actual business
-(e.g. "Cloud Consulting", "DevOps Staffing", "IT Outsourcing").
+(e.g. "Cloud Consulting", "Systems Integration", "IT Outsourcing").
 
 For Not Relevant: describe briefly
 (e.g. "Marketing Automation", "eCommerce Platform", "Consumer Social").
@@ -239,6 +239,7 @@ For Not Relevant: describe briefly
 ANTI-ICP — ALWAYS "Not Relevant"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 • Sales, marketing, HR, finance, legal, customer support tools
+• IT Staffing, Tech Recruitment, and Headhunting agencies (selling people, not software)
 • General project management for non-technical teams
 • BI dashboards for business analysts (Tableau, Power BI)
 • eCommerce, POS, retail, consumer/B2C apps

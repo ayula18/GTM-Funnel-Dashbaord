@@ -216,6 +216,14 @@ export async function ingestScrape(
 
   await withTx(async (client) => {
     // ── Step 1: Bulk upsert all profiles in one query ────────────────
+    const uniqueProfilesMap = new Map<string, typeof profiles[0]>();
+    for (const p of profiles) {
+      if (!uniqueProfilesMap.has(p.slug)) {
+        uniqueProfilesMap.set(p.slug, p);
+      }
+    }
+    const uniqueProfiles = Array.from(uniqueProfilesMap.values());
+
     const slugs: string[] = [];
     const names: string[] = [];
     const headlines: (string | null)[] = [];
@@ -224,7 +232,7 @@ export async function ingestScrape(
     const companies: (string | null)[] = [];
     const designations: (string | null)[] = [];
 
-    for (const p of profiles) {
+    for (const p of uniqueProfiles) {
       slugs.push(p.slug);
       names.push(p.name);
       headlines.push(p.headline || null);
