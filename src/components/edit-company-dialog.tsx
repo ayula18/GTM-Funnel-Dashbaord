@@ -43,6 +43,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
   const [category, setCategory] = useState(company.category || '');
   const [classification, setClassification] = useState(company.company_classification || '');
   const [confidence, setConfidence] = useState(company.confidence || '');
+  const [icpFitLevel, setIcpFitLevel] = useState(company.icp_fit_level || '');
   const [notes, setNotes] = useState(company.observations || '');
   const [mergeDomain, setMergeDomain] = useState('');
   const [merging, setMerging] = useState(false);
@@ -75,6 +76,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
         category: category || null,
         company_classification: classification || null,
         confidence: confidence || null,
+        icp_fit_level: icpFitLevel || null,
         observations: notes,
         needs_manual_review: 0 // clear review flag on manual edit
       };
@@ -249,6 +251,24 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSave }: EditC
                   <SelectItem value="High">High</SelectItem>
                   <SelectItem value="Medium">Medium</SelectItem>
                   <SelectItem value="Low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Fit Level</Label>
+            <div className="col-span-3">
+              <Select value={icpFitLevel} onValueChange={v => setIcpFitLevel(v ?? '')}>
+                <SelectTrigger className="bg-card border-border">
+                  <SelectValue placeholder="Select Fit Level" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="Low">Low</SelectItem>
+                  <SelectItem value="Review">Review</SelectItem>
+                  <SelectItem value="Not a Fit">Not a Fit</SelectItem>
                 </SelectContent>
               </Select>
             </div>

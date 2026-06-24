@@ -67,6 +67,7 @@ const FINAL_OUTPUT_COLUMNS: Array<[string, string]> = [
   ['subsidiary_of', 'Subsidiary of'],
   ['manual_icp', 'Manual ICP'],
   ['confidence', 'Confidence'],
+  ['icp_fit_level', 'ICP Fit Level'],
   ['is_nonprofit', 'Non profit ?'],
   ['final_bucket', 'Final bucket'],
 ];

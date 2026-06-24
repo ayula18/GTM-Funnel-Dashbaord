@@ -281,6 +281,12 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
           onChange={v => setColumnFilters(prev => ({ ...prev, confidence: v }))}
         />
         <CheckboxFilter
+          label="Fit Level"
+          options={filterOptions.icp_fit_level || []}
+          selected={columnFilters.icp_fit_level || []}
+          onChange={v => setColumnFilters(prev => ({ ...prev, icp_fit_level: v }))}
+        />
+        <CheckboxFilter
           label="Company Type"
           options={filterOptions.company_type || []}
           selected={columnFilters.company_type || []}
@@ -370,6 +376,7 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                 {['main', 'icp'].includes(viewMode) && <TableHead>Classification</TableHead>}
                 {['main', 'icp'].includes(viewMode) && <TableHead>Category</TableHead>}
                 {['main', 'icp'].includes(viewMode) && <TableHead>Confidence</TableHead>}
+                {['main', 'icp'].includes(viewMode) && <TableHead>Fit Level</TableHead>}
                 {['main', 'employees'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.employee_reo">Emp (Reo)</SortHeader></TableHead>}
                 {['main', 'apollo', 'employees'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.apollo_employees">Emp (Apollo)</SortHeader></TableHead>}
                 {['main', 'apollo'].includes(viewMode) && <TableHead className="text-right"><SortHeader col="c.sales_team_count">Sales Team</SortHeader></TableHead>}
@@ -469,15 +476,28 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                     {['main', 'icp'].includes(viewMode) && (
                       <TableCell>
                         {row.confidence ? (
-                          <span className={cn(
-                            "text-[11px] font-medium px-1.5 py-0.5 rounded",
+                          <Badge variant="outline" className={cn("text-[10px]", 
                             row.confidence === 'High' ? "text-emerald-600 bg-emerald-500/10" :
                             row.confidence === 'Medium' ? "text-amber-600 bg-amber-500/10" :
                             "text-red-600 bg-red-500/10"
                           )}>
                             {row.confidence}
-                          </span>
-                        ) : '—'}
+                          </Badge>
+                        ) : <span className="text-muted-foreground/50">—</span>}
+                      </TableCell>
+                    )}
+                    {['main', 'icp'].includes(viewMode) && (
+                      <TableCell>
+                        {row.icp_fit_level ? (
+                          <Badge variant="outline" className={cn("text-[10px]", 
+                            row.icp_fit_level === 'High' ? "text-emerald-600 bg-emerald-500/10" :
+                            row.icp_fit_level === 'Medium' ? "text-amber-600 bg-amber-500/10" :
+                            row.icp_fit_level === 'Review' ? "text-purple-600 bg-purple-500/10" :
+                            "text-slate-600 bg-slate-500/10"
+                          )}>
+                            {row.icp_fit_level}
+                          </Badge>
+                        ) : <span className="text-muted-foreground/50">—</span>}
                       </TableCell>
                     )}
                     {['main', 'employees'].includes(viewMode) && (
