@@ -62,6 +62,9 @@ interface Profile {
   enriched_company_linkedin: string | null;
   icp_status: string | null;
   comment_count: number;
+  reaction_count: number;
+  interaction_type: string;
+  reaction_types: string | null;
   campaigns: string | null;
 }
 
@@ -83,6 +86,8 @@ interface CommentRow {
 
 interface Stats {
   total_comments: number;
+  total_reactions: number;
+  total_interactions: number;
   unique_profiles: number;
   icp_profiles: number;
   non_icp_profiles: number;
@@ -584,8 +589,9 @@ export default function CommentIntelPage() {
       {stats && selectedCampaign && (
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
           <div className="bg-card border border-border rounded-xl p-4">
-            <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Comments</div>
-            <div className="text-2xl font-bold mt-1">{stats.total_comments}</div>
+            <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Interactions</div>
+            <div className="text-2xl font-bold mt-1">{stats.total_interactions}</div>
+            <div className="text-[10px] text-muted-foreground">{stats.total_comments} comments · {stats.total_reactions} reactions</div>
           </div>
           <div className="bg-card border border-border rounded-xl p-4">
             <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Unique Profiles</div>
@@ -637,7 +643,7 @@ export default function CommentIntelPage() {
             </TabsTrigger>
             <TabsTrigger value="comments" className="text-xs gap-1.5">
               <MessageSquareText className="w-3 h-3" />
-              Comments ({stats?.total_comments || 0})
+              Interactions ({stats?.total_interactions || 0})
             </TabsTrigger>
             <TabsTrigger value="profiles" className="text-xs gap-1.5">
               <Users className="w-3 h-3" />
@@ -1002,7 +1008,8 @@ export default function CommentIntelPage() {
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase">Company</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase w-36">Domain</th>
                       <th className="text-center px-4 py-3 font-semibold text-muted-foreground uppercase w-20">ICP</th>
-                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground uppercase w-20">Comments</th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground uppercase w-24">Interaction</th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground uppercase w-24">Reactions</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase w-28">Profile</th>
                     </tr>
                   </thead>
@@ -1042,7 +1049,10 @@ export default function CommentIntelPage() {
                         </td>
                         <td className="px-4 py-2.5 text-center"><IcpBadge status={p.icp_status} /></td>
                         <td className="px-4 py-2.5 text-center">
-                          <Badge variant={p.comment_count > 1 ? 'default' : 'secondary'} className="text-[10px]">{p.comment_count}</Badge>
+                          <Badge variant={p.interaction_type === 'Both' ? 'default' : 'secondary'} className="text-[10px]">{p.interaction_type}</Badge>
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          {p.reaction_types ? <span className="text-[10px] text-muted-foreground">{p.reaction_types}</span> : <span className="text-[10px] text-muted-foreground/30">—</span>}
                         </td>
                         <td className="px-4 py-2.5">
                           <a href={p.profile_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-[10px] flex items-center gap-1">

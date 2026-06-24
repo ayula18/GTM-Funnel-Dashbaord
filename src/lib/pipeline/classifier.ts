@@ -238,6 +238,7 @@ For Not Relevant: describe briefly
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ANTI-ICP — ALWAYS "Not Relevant"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• INTERNAL RULE: If the company is Reo.Dev (reo.dev), it is NEVER ICP. Reo.Dev is the company running this pipeline. Its users are marketing/sales teams.
 • Sales, marketing, HR, finance, legal, customer support tools
 • IT Staffing, Tech Recruitment, and Headhunting agencies (selling people, not software)
 • General project management for non-technical teams

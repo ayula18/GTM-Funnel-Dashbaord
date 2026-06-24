@@ -14,6 +14,13 @@ export interface ScrapedProfile {
   isReply: boolean;
 }
 
+export interface ScrapedReaction {
+  name: string;
+  slug: string;
+  url: string;
+  reactionType: string;
+}
+
 /**
  * Extracts profiles + comments from raw LinkedIn comments HTML
  * (the outerHTML of the comments container).
@@ -43,7 +50,7 @@ export function extractProfiles(html: string): ScrapedProfile[] {
       /href="(?:https?:\/\/(?:www\.)?linkedin\.com)?\/in\/([a-zA-Z0-9\-_%]+)\/?\"/i
     );
     if (slugMatch) {
-      slug = decodeURIComponent(slugMatch[1]).toLowerCase().replace(/\/+$/, "");
+      slug = decodeURIComponent(slugMatch[1]).replace(/\/+$/, "");
     }
 
     if (!slug) continue;
@@ -102,6 +109,71 @@ export function extractProfiles(html: string): ScrapedProfile[] {
       comment: comment.slice(0, 500),
       headline,
       isReply,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Extracts reactions from raw LinkedIn reactions HTML (facepile list).
+ */
+export function extractReactions(html: string): ScrapedReaction[] {
+  const results: ScrapedReaction[] = [];
+
+  // Split HTML into individual reaction items
+  const liParts = html.split(/<li[^>]*class="[^"]*social-details-reactors-[^"]*list-item[^"]*"[^>]*>/i);
+
+  // Skip first part
+  for (let i = 1; i < liParts.length; i++) {
+    const chunk = liParts[i];
+
+    // 1. EXTRACT SLUG
+    let slug = "";
+    const slugMatch = chunk.match(
+      /href="(?:https?:\/\/(?:www\.)?linkedin\.com)?\/in\/([a-zA-Z0-9\-_%]+)\/?\"/i
+    );
+    if (slugMatch) {
+      slug = decodeURIComponent(slugMatch[1]).replace(/\/+$/, "");
+    }
+    if (!slug) continue;
+
+    // 2. EXTRACT NAME AND REACTION
+    let name = "";
+    let reactionType = "UNKNOWN";
+
+    const ariaMatch = chunk.match(/aria-label="View\s+(.+?)’s.*?,\s+reacted with\s+([A-Z]+)[^"]*"/i);
+    if (ariaMatch) {
+      name = ariaMatch[1].trim();
+      reactionType = ariaMatch[2].toUpperCase().trim();
+    } else {
+      const viewProfileMatch = chunk.match(/<span class="visually-hidden">View\s+(.+?)’s profile<\/span>/i);
+      const titleMatch = chunk.match(/<span class="text-view-model"[^>]*>(.+?)<\/span>/i);
+      const titleLockupMatch = chunk.match(/<div[^>]*class="artdeco-entity-lockup__title"[^>]*>[\s\S]*?([A-Za-z\s]+)\s*<\/div>/i);
+      
+      if (viewProfileMatch) {
+        name = viewProfileMatch[1].trim();
+      } else if (titleMatch) {
+        name = titleMatch[1].trim();
+      } else if (titleLockupMatch) {
+        name = titleLockupMatch[1].trim();
+      } else {
+        // Fallback name from slug
+        name = slug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      }
+      
+      // Fallback reaction type from data-test-reactions-icon-type
+      const typeMatch = chunk.match(/data-test-reactions-icon-type="([A-Z]+)"/i);
+      if (typeMatch) {
+        reactionType = typeMatch[1].toUpperCase().trim();
+      }
+    }
+
+    results.push({
+      name,
+      slug,
+      url: `https://www.linkedin.com/in/${slug}/`,
+      reactionType
     });
   }
 

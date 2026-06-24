@@ -69,8 +69,8 @@ export async function POST(request: Request) {
       fields.push(current.trim());
 
       const rawSlug = fields[slugIdx] || '';
-      // Extract slug from full URL if needed
-      const slug = rawSlug.replace(/.*\/in\//, '').replace(/\/$/, '').toLowerCase();
+      // Extract the slug from the URL to match DB records exactly
+      const slug = rawSlug.replace(/.*\/in\//, '').replace(/\/$/, '');
       if (!slug) continue;
 
       updates.push({

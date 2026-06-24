@@ -53,10 +53,23 @@ export async function ensureCommentTables() {
     )
   `);
 
+  await qp(`
+    CREATE TABLE IF NOT EXISTS linkedin_reactions (
+      id            SERIAL PRIMARY KEY,
+      post_id       INTEGER NOT NULL REFERENCES linkedin_posts(id) ON DELETE CASCADE,
+      profile_id    INTEGER NOT NULL REFERENCES linkedin_profiles(id),
+      reaction_type TEXT,
+      scraped_at    TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(post_id, profile_id)
+    )
+  `);
+
   // Index for fast campaign-level queries
   await qp(`CREATE INDEX IF NOT EXISTS idx_lp_campaign ON linkedin_posts(campaign_tag)`);
   await qp(`CREATE INDEX IF NOT EXISTS idx_lc_post ON linkedin_comments(post_id)`);
   await qp(`CREATE INDEX IF NOT EXISTS idx_lc_profile ON linkedin_comments(profile_id)`);
+  await qp(`CREATE INDEX IF NOT EXISTS idx_lr_post ON linkedin_reactions(post_id)`);
+  await qp(`CREATE INDEX IF NOT EXISTS idx_lr_profile ON linkedin_reactions(profile_id)`);
   await qp(`CREATE INDEX IF NOT EXISTS idx_lpro_icp ON linkedin_profiles(icp_status)`);
   await qp(`CREATE INDEX IF NOT EXISTS idx_lpro_domain ON linkedin_profiles(enriched_company_domain)`);
 }
@@ -133,6 +146,9 @@ export interface LIProfile {
   created_at: string;
   updated_at: string;
   comment_count?: number;
+  reaction_count?: number;
+  interaction_type?: string;
+  reaction_types?: string;
   campaigns?: string;
 }
 
@@ -188,38 +204,51 @@ export interface ScrapeIngestResult {
   totalExtracted: number;
   newProfiles: number;
   newComments: number;
+  newReactions: number;
   duplicateComments: number;
 }
 
 export async function ingestScrape(
   postId: number,
-  profiles: Array<{
+  comments: {
     slug: string;
     name: string;
-    headline: string;
+    headline?: string;
     url: string;
-    profile_image?: string;
     comment: string;
     is_reply: boolean;
     parsed_company?: string;
     parsed_designation?: string;
-  }>,
-): Promise<ScrapeIngestResult> {
-  const result: ScrapeIngestResult = {
-    totalExtracted: profiles.length,
-    newProfiles: 0,
-    newComments: 0,
-    duplicateComments: 0,
-  };
+    profile_image?: string;
+  }[],
+  reactions: {
+    slug: string;
+    name: string;
+    url: string;
+    reaction_type: string;
+  }[] = []
+) {
+  if (comments.length === 0 && reactions.length === 0) return { profilesUpserted: 0, commentsInserted: 0, reactionsInserted: 0 };
 
-  if (profiles.length === 0) return result;
-
-  await withTx(async (client) => {
+  return await withTx(async (client) => {
     // ── Step 1: Bulk upsert all profiles in one query ────────────────
-    const uniqueProfilesMap = new Map<string, typeof profiles[0]>();
-    for (const p of profiles) {
+    const uniqueProfilesMap = new Map<string, any>();
+    for (const p of comments) {
       if (!uniqueProfilesMap.has(p.slug)) {
         uniqueProfilesMap.set(p.slug, p);
+      }
+    }
+    for (const r of reactions) {
+      if (!uniqueProfilesMap.has(r.slug)) {
+        uniqueProfilesMap.set(r.slug, {
+          slug: r.slug,
+          name: r.name,
+          url: r.url,
+          headline: null,
+          profile_image: null,
+          parsed_company: null,
+          parsed_designation: null
+        });
       }
     }
     const uniqueProfiles = Array.from(uniqueProfilesMap.values());
@@ -252,51 +281,86 @@ export async function ingestScrape(
          parsed_company = COALESCE(NULLIF(EXCLUDED.parsed_company, ''), linkedin_profiles.parsed_company),
          parsed_designation = COALESCE(NULLIF(EXCLUDED.parsed_designation, ''), linkedin_profiles.parsed_designation),
          updated_at = NOW()
-       RETURNING id, slug, (xmax = 0) AS was_insert`,
+       RETURNING id, slug`,
       [slugs, names, headlines, urls, images, companies, designations]
     );
 
-    // Build slug → id map
+    // Build a map of slug -> id for comments and reactions
     const slugToId = new Map<string, number>();
     for (const row of profileResult.rows) {
       slugToId.set(row.slug, row.id);
-      if (row.was_insert) result.newProfiles++;
     }
 
-    // ── Step 2: Bulk insert all comments in one query ────────────────
-    const cPostIds: number[] = [];
-    const cProfileIds: number[] = [];
-    const cTexts: (string | null)[] = [];
-    const cReplies: boolean[] = [];
+    // ── Step 2: Bulk insert comments ──────────────────────────────────
+    let commentsInserted = 0;
+    if (comments.length > 0) {
+      const cPostIds: number[] = [];
+      const cProfileIds: number[] = [];
+      const cTexts: string[] = [];
+      const cIsReplies: boolean[] = [];
 
-    for (const p of profiles) {
-      const profileId = slugToId.get(p.slug);
-      if (!profileId) continue;
-      cPostIds.push(postId);
-      cProfileIds.push(profileId);
-      cTexts.push(p.comment || null);
-      cReplies.push(p.is_reply);
+      for (const c of comments) {
+        const pid = slugToId.get(c.slug);
+        if (!pid) continue;
+        cPostIds.push(postId);
+        cProfileIds.push(pid);
+        cTexts.push(c.comment);
+        cIsReplies.push(c.is_reply);
+      }
+
+      if (cPostIds.length > 0) {
+        const commentResult = await client.query(
+          `INSERT INTO linkedin_comments (post_id, profile_id, comment_text, is_reply)
+           SELECT * FROM UNNEST($1::int[], $2::int[], $3::text[], $4::boolean[])
+           ON CONFLICT (post_id, profile_id, comment_text) DO NOTHING`,
+          [cPostIds, cProfileIds, cTexts, cIsReplies]
+        );
+        commentsInserted = commentResult.rowCount ?? 0;
+      }
     }
 
-    const commentResult = await client.query(
-      `INSERT INTO linkedin_comments (post_id, profile_id, comment_text, is_reply)
-       SELECT * FROM UNNEST($1::int[], $2::int[], $3::text[], $4::bool[])
-       ON CONFLICT (post_id, profile_id, comment_text) DO NOTHING
-       RETURNING id`,
-      [cPostIds, cProfileIds, cTexts, cReplies]
-    );
+    // ── Step 3: Bulk insert reactions ──────────────────────────────────
+    let reactionsInserted = 0;
+    if (reactions.length > 0) {
+      const rPostIds: number[] = [];
+      const rProfileIds: number[] = [];
+      const rTypes: string[] = [];
 
-    result.newComments = commentResult.rows.length;
-    result.duplicateComments = profiles.length - result.newComments;
+      for (const r of reactions) {
+        const pid = slugToId.get(r.slug);
+        if (!pid) continue;
+        rPostIds.push(postId);
+        rProfileIds.push(pid);
+        rTypes.push(r.reaction_type);
+      }
+
+      if (rPostIds.length > 0) {
+        const reactionResult = await client.query(
+          `INSERT INTO linkedin_reactions (post_id, profile_id, reaction_type)
+           SELECT * FROM UNNEST($1::int[], $2::int[], $3::text[])
+           ON CONFLICT (post_id, profile_id) DO UPDATE SET reaction_type = EXCLUDED.reaction_type`,
+          [rPostIds, rProfileIds, rTypes]
+        );
+        reactionsInserted = reactionResult.rowCount ?? 0;
+      }
+    }
+
+    const result: ScrapeIngestResult = {
+      totalExtracted: comments.length + reactions.length,
+      newProfiles: profileResult.rowCount ?? 0,
+      newComments: commentsInserted,
+      newReactions: reactionsInserted,
+      duplicateComments: comments.length - commentsInserted
+    };
 
     // ── Step 3: Update last_scraped ──────────────────────────────────
     await client.query(
       `UPDATE linkedin_posts SET last_scraped = NOW() WHERE id = $1`,
       [postId]
     );
-  });
 
-  return result;
+    return result;
+  });
 }
 
 // ── Query: profiles for a campaign ────────────────────────────────────
@@ -326,15 +390,27 @@ export async function getProfilesByCampaign(
   }
 
   return qp<LIProfile>(
-    `SELECT pr.*,
-            COUNT(c.id) AS comment_count,
+    `WITH interactions AS (
+       SELECT profile_id, post_id, 'Comment' as type, NULL as r_type FROM linkedin_comments
+       UNION ALL
+       SELECT profile_id, post_id, 'Reaction' as type, reaction_type as r_type FROM linkedin_reactions
+     )
+     SELECT pr.*,
+            COUNT(NULLIF(interactions.type, 'Reaction')) AS comment_count,
+            COUNT(NULLIF(interactions.type, 'Comment')) AS reaction_count,
+            CASE 
+              WHEN COUNT(NULLIF(interactions.type, 'Reaction')) > 0 AND COUNT(NULLIF(interactions.type, 'Comment')) > 0 THEN 'Both'
+              WHEN COUNT(NULLIF(interactions.type, 'Reaction')) > 0 THEN 'Comment'
+              ELSE 'Reaction'
+            END as interaction_type,
+            STRING_AGG(DISTINCT interactions.r_type, ', ') FILTER (WHERE interactions.r_type IS NOT NULL) as reaction_types,
             STRING_AGG(DISTINCT p.campaign_tag, ', ') AS campaigns
      FROM linkedin_profiles pr
-     JOIN linkedin_comments c ON c.profile_id = pr.id
-     JOIN linkedin_posts p ON p.id = c.post_id
+     JOIN interactions ON interactions.profile_id = pr.id
+     JOIN linkedin_posts p ON p.id = interactions.post_id
      ${where}
      GROUP BY pr.id
-     ORDER BY COUNT(c.id) DESC, pr.name ASC`,
+     ORDER BY COUNT(interactions.type) DESC, pr.name ASC`,
     params
   );
 }
@@ -440,11 +516,18 @@ export async function getCommentsByCampaign(
 
 export async function getCommentsForExport(campaignTag: string) {
   return qp(
-    `SELECT 
+    `WITH interactions AS (
+       SELECT profile_id, post_id, comment_text, NULL as reaction_type, scraped_at, 'Comment' as interaction_type FROM linkedin_comments
+       UNION ALL
+       SELECT profile_id, post_id, NULL as comment_text, reaction_type, scraped_at, 'Reaction' as interaction_type FROM linkedin_reactions
+     )
+     SELECT 
         pr.name AS "Name",
         pr.profile_url AS "LinkedIn Profile",
         pr.headline AS "Headline",
-        c.comment_text AS "Comment",
+        i.interaction_type AS "Interaction",
+        i.comment_text AS "Comment",
+        i.reaction_type AS "Reaction Type",
         pr.icp_status AS "ICP Status",
         COALESCE(pr.enriched_company_name, comp.company_name, pr.parsed_company) AS "Company",
         COALESCE(pr.enriched_company_domain, comp.domain) AS "Domain",
@@ -452,14 +535,14 @@ export async function getCommentsForExport(campaignTag: string) {
         CASE WHEN cust.id IS NOT NULL THEN 'Yes' ELSE 'No' END AS "Is Customer?",
         p.post_title AS "Post Title",
         p.post_url AS "Post URL",
-        c.scraped_at AS "Scraped At"
-     FROM linkedin_comments c
-     JOIN linkedin_posts p ON p.id = c.post_id
-     JOIN linkedin_profiles pr ON pr.id = c.profile_id
+        i.scraped_at AS "Scraped At"
+     FROM interactions i
+     JOIN linkedin_posts p ON p.id = i.post_id
+     JOIN linkedin_profiles pr ON pr.id = i.profile_id
      LEFT JOIN companies comp ON comp.id = pr.company_id
      LEFT JOIN customers cust ON COALESCE(pr.enriched_company_domain, comp.domain) = cust.domain
      WHERE p.campaign_tag = $1
-     ORDER BY c.scraped_at DESC`,
+     ORDER BY i.scraped_at DESC`,
     [campaignTag]
   );
 }
@@ -527,6 +610,8 @@ export async function enrichProfiles(
 export interface CampaignCommentStats {
   campaign_tag: string;
   total_comments: number;
+  total_reactions: number;
+  total_interactions: number;
   unique_profiles: number;
   icp_profiles: number;
   non_icp_profiles: number;
@@ -538,22 +623,31 @@ export interface CampaignCommentStats {
 export async function getCampaignCommentStats(campaignTag: string): Promise<CampaignCommentStats> {
   const rows = await qp<{
     total_comments: string;
+    total_reactions: string;
+    total_interactions: string;
     unique_profiles: string;
     icp_profiles: string;
     non_icp_profiles: string;
     pending_profiles: string;
     enriched_profiles: string;
   }>(
-    `SELECT
-       COUNT(c.id) AS total_comments,
+    `WITH interactions AS (
+       SELECT profile_id, post_id, 'Comment' as type FROM linkedin_comments
+       UNION ALL
+       SELECT profile_id, post_id, 'Reaction' as type FROM linkedin_reactions
+     )
+     SELECT
+       COUNT(NULLIF(interactions.type, 'Reaction')) AS total_comments,
+       COUNT(NULLIF(interactions.type, 'Comment')) AS total_reactions,
+       COUNT(interactions.*) AS total_interactions,
        COUNT(DISTINCT pr.id) AS unique_profiles,
        COUNT(DISTINCT CASE WHEN LOWER(pr.icp_status) IN ('yes', 'true') THEN pr.id END) AS icp_profiles,
        COUNT(DISTINCT CASE WHEN LOWER(pr.icp_status) IN ('no', 'false') THEN pr.id END) AS non_icp_profiles,
        COUNT(DISTINCT CASE WHEN pr.enriched_company_domain IS NULL THEN pr.id END) AS pending_profiles,
        COUNT(DISTINCT CASE WHEN pr.enriched_company_domain IS NOT NULL THEN pr.id END) AS enriched_profiles
-     FROM linkedin_comments c
-     JOIN linkedin_posts p ON p.id = c.post_id
-     JOIN linkedin_profiles pr ON pr.id = c.profile_id
+     FROM interactions
+     JOIN linkedin_posts p ON p.id = interactions.post_id
+     JOIN linkedin_profiles pr ON pr.id = interactions.profile_id
      WHERE p.campaign_tag = $1`,
     [campaignTag]
   );
@@ -565,6 +659,8 @@ export async function getCampaignCommentStats(campaignTag: string): Promise<Camp
   return {
     campaign_tag: campaignTag,
     total_comments: parseInt(r?.total_comments || '0'),
+    total_reactions: parseInt(r?.total_reactions || '0'),
+    total_interactions: parseInt(r?.total_interactions || '0'),
     unique_profiles: unique,
     icp_profiles: icp,
     non_icp_profiles: parseInt(r?.non_icp_profiles || '0'),
@@ -578,23 +674,32 @@ export async function getAllCampaignCommentStats(): Promise<CampaignCommentStats
   const rows = await qp<{
     campaign_tag: string;
     total_comments: string;
+    total_reactions: string;
+    total_interactions: string;
     unique_profiles: string;
     icp_profiles: string;
     non_icp_profiles: string;
     pending_profiles: string;
     enriched_profiles: string;
   }>(
-    `SELECT
+    `WITH interactions AS (
+       SELECT profile_id, post_id, 'Comment' as type FROM linkedin_comments
+       UNION ALL
+       SELECT profile_id, post_id, 'Reaction' as type FROM linkedin_reactions
+     )
+     SELECT
        p.campaign_tag,
-       COUNT(c.id) AS total_comments,
+       COUNT(NULLIF(interactions.type, 'Reaction')) AS total_comments,
+       COUNT(NULLIF(interactions.type, 'Comment')) AS total_reactions,
+       COUNT(interactions.*) AS total_interactions,
        COUNT(DISTINCT pr.id) AS unique_profiles,
        COUNT(DISTINCT CASE WHEN LOWER(pr.icp_status) IN ('yes', 'true') THEN pr.id END) AS icp_profiles,
        COUNT(DISTINCT CASE WHEN LOWER(pr.icp_status) IN ('no', 'false') THEN pr.id END) AS non_icp_profiles,
        COUNT(DISTINCT CASE WHEN pr.enriched_company_domain IS NULL THEN pr.id END) AS pending_profiles,
        COUNT(DISTINCT CASE WHEN pr.enriched_company_domain IS NOT NULL THEN pr.id END) AS enriched_profiles
-     FROM linkedin_comments c
-     JOIN linkedin_posts p ON p.id = c.post_id
-     JOIN linkedin_profiles pr ON pr.id = c.profile_id
+     FROM interactions
+     JOIN linkedin_posts p ON p.id = interactions.post_id
+     JOIN linkedin_profiles pr ON pr.id = interactions.profile_id
      GROUP BY p.campaign_tag
      ORDER BY p.campaign_tag`
   );
@@ -605,6 +710,8 @@ export async function getAllCampaignCommentStats(): Promise<CampaignCommentStats
     return {
       campaign_tag: r.campaign_tag,
       total_comments: parseInt(r.total_comments || '0'),
+      total_reactions: parseInt(r.total_reactions || '0'),
+      total_interactions: parseInt(r.total_interactions || '0'),
       unique_profiles: unique,
       icp_profiles: icp,
       non_icp_profiles: parseInt(r.non_icp_profiles || '0'),
