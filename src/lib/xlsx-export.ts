@@ -313,25 +313,12 @@ function buildInsightsSheet(wb: ExcelJS.Workbook, steps: FunnelSteps, dailyInsig
 
   // Category Breakdown Heatmap
   currentRow += 3;
-  ws.mergeCells(`A${currentRow}:E${currentRow}`);
+  ws.mergeCells(`A${currentRow}:D${currentRow}`);
   const title3 = ws.getCell(`A${currentRow}`);
-  title3.value = 'Category Heatmap (Qualified Companies)';
+  title3.value = 'Category Breakdown (Qualified Companies)';
   title3.font = { bold: true, size: 12 };
   title3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF68A2EB' } };
   title3.alignment = { horizontal: 'center', vertical: 'middle' };
-
-  currentRow++;
-  ws.getCell(`A${currentRow}`).value = 'GTM Segment';
-  ws.getCell(`B${currentRow}`).value = 'Classification';
-  ws.getCell(`C${currentRow}`).value = 'Total Qualified';
-  ws.getCell(`D${currentRow}`).value = 'NetNew Accounts';
-  
-  const heatmapHeader = ws.getRow(currentRow);
-  heatmapHeader.font = { bold: true };
-  heatmapHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F2FF' } };
-  heatmapHeader.alignment = { horizontal: 'center', vertical: 'middle' };
-  
-  const heatmapStartRow = currentRow;
 
   // Compute breakdown
   type SegmentData = { classification: string, total: number, netnew: number };
@@ -358,27 +345,91 @@ function buildInsightsSheet(wb: ExcelJS.Workbook, steps: FunnelSteps, dailyInsig
 
   const sortedSegments = Array.from(breakdown.entries()).sort((a, b) => b[1].netnew - a[1].netnew);
 
-  for (const [segment, data] of sortedSegments) {
-    currentRow++;
-    ws.getCell(`A${currentRow}`).value = segment;
-    ws.getCell(`B${currentRow}`).value = data.classification;
-    ws.getCell(`C${currentRow}`).value = data.total;
-    ws.getCell(`D${currentRow}`).value = data.netnew;
-    ws.getRow(currentRow).alignment = { horizontal: 'center', vertical: 'middle' };
-  }
+  const devTools = sortedSegments.filter(s => s[1].classification === 'DevTool');
+  const itServices = sortedSegments.filter(s => s[1].classification === 'IT Services & Solutions');
 
-  // Add borders to the third table
-  for (let r = heatmapStartRow; r <= currentRow; r++) {
-    for (let c = 1; c <= 4; c++) {
-      const cell = ws.getCell(r, c);
-      cell.border = {
-        top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
-        left: { style: 'thin', color: { argb: 'FFD3D3D3' } },
-        bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
-        right: { style: 'thin', color: { argb: 'FFD3D3D3' } },
-      };
+  function renderTable(title: string, dataItems: typeof sortedSegments, color: string) {
+    if (dataItems.length === 0) return;
+
+    currentRow += 2;
+    ws.mergeCells(`A${currentRow}:D${currentRow}`);
+    const tblTitle = ws.getCell(`A${currentRow}`);
+    tblTitle.value = title;
+    tblTitle.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+    tblTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+    tblTitle.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    currentRow++;
+    ws.getCell(`A${currentRow}`).value = 'GTM Segment';
+    ws.getCell(`B${currentRow}`).value = 'Classification';
+    ws.getCell(`C${currentRow}`).value = 'Total Qualified';
+    ws.getCell(`D${currentRow}`).value = 'NetNew Accounts';
+    
+    const header = ws.getRow(currentRow);
+    header.font = { bold: true };
+    header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F2FF' } };
+    header.alignment = { horizontal: 'center', vertical: 'middle' };
+    
+    const startRow = currentRow + 1;
+    let sumTotal = 0;
+    let sumNetNew = 0;
+
+    for (const [segment, data] of dataItems) {
+      currentRow++;
+      ws.getCell(`A${currentRow}`).value = segment;
+      ws.getCell(`B${currentRow}`).value = data.classification;
+      ws.getCell(`C${currentRow}`).value = data.total;
+      ws.getCell(`D${currentRow}`).value = data.netnew;
+      ws.getRow(currentRow).alignment = { horizontal: 'center', vertical: 'middle' };
+      sumTotal += data.total;
+      sumNetNew += data.netnew;
+    }
+
+    const endRow = currentRow;
+
+    currentRow++;
+    ws.getCell(`A${currentRow}`).value = 'Subtotal';
+    ws.getCell(`C${currentRow}`).value = sumTotal;
+    ws.getCell(`D${currentRow}`).value = sumNetNew;
+    const subRow = ws.getRow(currentRow);
+    subRow.font = { bold: true };
+    subRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Add borders
+    for (let r = startRow - 1; r <= currentRow; r++) {
+      for (let c = 1; c <= 4; c++) {
+        const cell = ws.getCell(r, c);
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+          left: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+          bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+          right: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+        };
+      }
+    }
+
+    if (startRow <= endRow) {
+      ws.addConditionalFormatting({
+        ref: `C${startRow}:C${endRow}`,
+        rules: [{
+          type: 'dataBar',
+          cfvo: [{ type: 'num', value: 0 }, { type: 'max' }],
+          color: { argb: 'FF9BC2E6' } // Light blue
+        } as any]
+      });
+      ws.addConditionalFormatting({
+        ref: `D${startRow}:D${endRow}`,
+        rules: [{
+          type: 'dataBar',
+          cfvo: [{ type: 'num', value: 0 }, { type: 'max' }],
+          color: { argb: 'FFA9D08E' } // Light green
+        } as any]
+      });
     }
   }
+
+  renderTable('DevTool Companies', devTools, 'FF4F81BD'); // Muted blue
+  renderTable('IT Services & Solutions', itServices, 'FFF79646'); // Muted orange
 }
 
 function buildSummarySheet(wb: ExcelJS.Workbook, funnel: Row, steps: FunnelSteps) {

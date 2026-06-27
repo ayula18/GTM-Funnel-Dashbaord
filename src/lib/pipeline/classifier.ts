@@ -190,21 +190,24 @@ The distinguishing test: does a SOFTWARE ENGINEER at a tech company
 integrate this product into their application via code? Or does an
 INDUSTRY PROFESSIONAL use it through a GUI to do their domain job?
 
-HARDWARE COMPANIES:
-Companies that primarily build PHYSICAL PRODUCTS (robots, drones,
-satellites, LiDAR, autonomous vehicles, displays, sensors) are NOT
-devtools, even if they use sophisticated software internally.
-The test: is the thing being sold a SOFTWARE TOOL for engineers, or
-a PHYSICAL DEVICE? Physical devices → Not Relevant.
-EXCEPTION: Robotics SOFTWARE PLATFORMS that engineers use to program,
-simulate, or orchestrate robots (e.g. ROS tooling) → DevTool.
+DIGITAL VS PHYSICAL ENGINEERING (CRITICAL BOUNDARY):
+The "engineering function" we target is STRICTLY digital engineering: software engineering, data engineering, cloud/IT infrastructure, platform engineering, and cybersecurity. 
+
+It does NOT include physical, mechanical, or civil engineering disciplines.
+- 3D CAD/CAM software (e.g. SolidWorks, AutoCAD) → Users are mechanical/design engineers, NOT software engineers. NOT ICP.
+- Industrial IoT / predictive maintenance software → Users are factory operators or maintenance engineers for physical machines. NOT ICP.
+- Robotics & Drone platforms (unless strictly a developer framework like ROS) → Users are robotics/hardware engineers or operators. NOT ICP.
+- Civil engineering and 3D printing software → Users are civil/hardware engineers. NOT ICP.
+
+The Litmus Test for "Engineers": 
+If the user builds software applications, APIs, data pipelines, cloud networks, or secures digital assets → YES, DevTool. 
+If the user designs physical buildings, mechanical parts, circuits, or maintains physical factory machines → NO, Not Relevant.
+
+HARDWARE DEVICES (Never ICP):
+Companies that primarily build PHYSICAL PRODUCTS (robots, drones, satellites, LiDAR, autonomous vehicles, displays, sensors) are NOT devtools, even if they use sophisticated software internally.
 
 AI-POWERED ≠ ENGINEERING:
-A company using AI internally to power its product does NOT make it a
-devtool. BenevolentAI uses ML for drug discovery → their user is a
-pharmaceutical researcher, NOT an ML engineer. The test: does the
-company sell AI/ML TOOLS TO engineers, or does it USE AI to serve
-non-engineering users? Only the former is ICP.
+A company using AI internally to power its product does NOT make it a devtool. BenevolentAI uses ML for drug discovery → their user is a pharmaceutical researcher, NOT an ML engineer. The test: does the company sell AI/ML TOOLS TO engineers, or does it USE AI to serve non-engineering users? Only the former is ICP.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRODUCT vs SERVICES signals

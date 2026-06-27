@@ -28,12 +28,19 @@ export async function POST(request: Request) {
       h.includes('slug') || h === 'profile url' || h === 'linkedin url' ||
       h === 'url' || h === 'linkedin' || h === 'person linkedin url' || h === 'linkedin_profile_url'
     );
-    const companyIdx = headers.findIndex(h =>
+    let companyIdx = headers.findIndex(h =>
       (h.includes('company') && !h.includes('linkedin')) || h === 'company name' || h === 'company_name'
     );
-    const domainIdx = headers.findIndex(h =>
+    if (companyIdx < 0) {
+      companyIdx = headers.findIndex(h => h === 'org');
+    }
+
+    let domainIdx = headers.findIndex(h =>
       h.includes('domain') || h === 'website' || h === 'domain_url'
     );
+    if (domainIdx < 0) {
+      domainIdx = headers.findIndex(h => h === 'org');
+    }
     const companyLinkedinIdx = headers.findIndex(h =>
       h === 'company linkedin' || h === 'company linkedin url' || h === 'company_linkedin_url'
     );

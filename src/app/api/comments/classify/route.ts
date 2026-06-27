@@ -65,36 +65,90 @@ export async function POST(request: Request) {
     }
 
     // 3. Upsert each enriched domain into the companies table and link to funnel
+    //
+    // IMPORTANT: enriched_company_domain from the CSV often contains company
+    // NAMES ("MoEngage") rather than actual domains ("moengage.com").
+    // We must resolve these to existing companies before creating new ones.
     const profileSlugByDomain: Record<string, string[]> = {};
     let insertedCount = 0;
+    const looksLikeDomain = (s: string) => /\.[a-z]{2,}$/i.test(s) && !s.includes(' ');
+    const COMMON_TLDS = ['.com', '.io', '.ai', '.dev', '.co', '.tech', '.cloud', '.app'];
 
     for (const d of domains) {
-      // Check if company already exists
-      const smartMatch = await findCompanyByDomainSmart(d.domain, d.companyName || undefined, undefined);
+      const raw = d.domain.trim();
+      let companyId: number | null = null;
 
-      let companyId: number;
-      if (smartMatch && smartMatch.confidence === 'exact') {
-        companyId = smartMatch.id;
+      // --- Step A: If it already looks like a domain, do the normal lookup ---
+      if (looksLikeDomain(raw)) {
+        const lowerDomain = raw.toLowerCase();
+        const smartMatch = await findCompanyByDomainSmart(lowerDomain, d.companyName || undefined, undefined);
+        if (smartMatch && (smartMatch.confidence === 'exact' || smartMatch.confidence === 'high')) {
+          companyId = smartMatch.id;
+        } else {
+          const result = await upsertCompanyTracked(
+            { domain: lowerDomain, company_name: d.companyName || null },
+            { source: 'raw_domains' },
+          );
+          companyId = result.id;
+          insertedCount++;
+        }
       } else {
-        const companyData: Record<string, unknown> = {
-          domain: d.domain,
-          company_name: d.companyName || null,
-        };
-        // Domain-only inserts from Comment Intel — treat as raw domains (owns no
-        // enrichment columns, so identity fields like company_name fill cleanly).
-        const result = await upsertCompanyTracked(companyData, { source: 'raw_domains' });
-        companyId = result.id;
-        insertedCount++;
+        // --- Step B: It's a company NAME, not a domain. Resolve it. ---
+
+        // B1. Try exact company_name match in the DB
+        const nameMatch = await qp<{ id: number; domain: string; icp_decision: string | null }>(
+          `SELECT id, domain, icp_decision FROM companies
+           WHERE LOWER(company_name) = LOWER($1) AND merged_into_id IS NULL
+           ORDER BY icp_decision IS NOT NULL DESC, id ASC LIMIT 1`,
+          [raw],
+        );
+        if (nameMatch.length > 0) {
+          companyId = nameMatch[0].id;
+        }
+
+        // B2. Try common TLD guesses: "MoEngage" → "moengage.com"
+        if (!companyId) {
+          const slug = raw.replace(/[^a-z0-9]/gi, '').toLowerCase();
+          for (const tld of COMMON_TLDS) {
+            const candidate = slug + tld;
+            const found = await qp<{ id: number }>(
+              `SELECT id FROM companies WHERE LOWER(domain) = $1 AND merged_into_id IS NULL LIMIT 1`,
+              [candidate],
+            );
+            if (found.length > 0) {
+              companyId = found[0].id;
+              break;
+            }
+          }
+        }
+
+        // B3. Still nothing? Create with the best domain we can construct.
+        if (!companyId) {
+          const slug = raw.replace(/[^a-z0-9]/gi, '').toLowerCase();
+          const constructedDomain = slug + '.com'; // best guess
+          const result = await upsertCompanyTracked(
+            { domain: constructedDomain, company_name: raw },
+            { source: 'raw_domains' },
+          );
+          companyId = result.id;
+          insertedCount++;
+        }
       }
 
       await linkCompanyToFunnel(companyId, funnelId);
 
-      // Track which profile slugs map to each domain
-      const profileRow = await qp<{ slug: string }>(`SELECT slug FROM linkedin_profiles WHERE id = $1`, [d.profileId]);
-      if (profileRow.length > 0) {
-        if (!profileSlugByDomain[d.domain]) profileSlugByDomain[d.domain] = [];
-        profileSlugByDomain[d.domain].push(profileRow[0].slug);
+      // Immediately link profile if company already has an ICP decision
+      const decision = await qp<{ icp_decision: string }>(
+        `SELECT icp_decision FROM companies WHERE id = $1 AND icp_decision IS NOT NULL`,
+        [companyId],
+      );
+      if (decision.length > 0 && decision[0].icp_decision) {
+        await linkProfileToCompany(d.profileSlug, companyId, decision[0].icp_decision);
       }
+
+      // Track which profile slugs map to each domain
+      if (!profileSlugByDomain[d.domain]) profileSlugByDomain[d.domain] = [];
+      profileSlugByDomain[d.domain].push(d.profileSlug);
     }
 
     // 4. Run the existing classification pipeline on the funnel

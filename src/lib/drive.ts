@@ -27,16 +27,16 @@ function serviceAccountJson(): string | null {
   return process.env.GOOGLE_SERVICE_ACCOUNT_JSON || null;
 }
 
-export function driveConfigured(): boolean {
-  return !!(serviceAccountJson() && process.env.GDRIVE_FOLDER_ID);
+export function driveConfigured(folderEnvVar: string = 'GDRIVE_FOLDER_ID'): boolean {
+  return !!(serviceAccountJson() && process.env[folderEnvVar]);
 }
 
 /** Build an authed Drive client + the target folder id, or throw a clear error. */
-function getDrive(): { drive: drive_v3.Drive; folderId: string } {
+function getDrive(folderEnvVar: string = 'GDRIVE_FOLDER_ID'): { drive: drive_v3.Drive; folderId: string } {
   const raw = serviceAccountJson();
-  const folderId = process.env.GDRIVE_FOLDER_ID;
+  const folderId = process.env[folderEnvVar];
   if (!raw || !folderId) {
-    throw new Error('Google Drive is not configured. Set GOOGLE_SERVICE_ACCOUNT_B64 (or _JSON) and GDRIVE_FOLDER_ID.');
+    throw new Error(`Google Drive is not configured. Set GOOGLE_SERVICE_ACCOUNT_B64 (or _JSON) and ${folderEnvVar}.`);
   }
   let credentials: Record<string, unknown>;
   try {
@@ -51,8 +51,9 @@ function getDrive(): { drive: drive_v3.Drive; folderId: string } {
 export async function uploadXlsxToDrive(
   fileName: string,
   buffer: Buffer,
+  folderEnvVar: string = 'GDRIVE_FOLDER_ID'
 ): Promise<{ id: string; link: string }> {
-  const { drive, folderId } = getDrive();
+  const { drive, folderId } = getDrive(folderEnvVar);
   const res = await drive.files.create({
     requestBody: { name: fileName, parents: [folderId] },
     media: { mimeType: XLSX_MIME, body: Readable.from(buffer) },
@@ -62,16 +63,54 @@ export async function uploadXlsxToDrive(
   return { id: res.data.id || '', link: res.data.webViewLink || '' };
 }
 
+export async function upsertXlsxToDrive(
+  fileName: string,
+  buffer: Buffer,
+  folderEnvVar: string = 'GDRIVE_FOLDER_ID'
+): Promise<{ id: string; link: string; updated: boolean }> {
+  const { drive, folderId } = getDrive(folderEnvVar);
+  
+  // Search for an existing file with the exact same name in this folder
+  const query = `name = '${fileName.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed = false`;
+  const searchRes = await drive.files.list({
+    q: query,
+    fields: 'files(id, webViewLink)',
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+  
+  const existingFile = searchRes.data.files && searchRes.data.files.length > 0 ? searchRes.data.files[0] : null;
+
+  if (existingFile && existingFile.id) {
+    // Update existing file
+    await drive.files.update({
+      fileId: existingFile.id,
+      media: { mimeType: XLSX_MIME, body: Readable.from(buffer) },
+      supportsAllDrives: true,
+    });
+    return { id: existingFile.id, link: existingFile.webViewLink || '', updated: true };
+  } else {
+    // Create new file
+    const res = await drive.files.create({
+      requestBody: { name: fileName, parents: [folderId] },
+      media: { mimeType: XLSX_MIME, body: Readable.from(buffer) },
+      fields: 'id, webViewLink',
+      supportsAllDrives: true,
+    });
+    return { id: res.data.id || '', link: res.data.webViewLink || '', updated: false };
+  }
+}
+
 /** Status for the UI indicator: is Drive wired up AND can we reach the folder? */
-export async function verifyDriveAccess(): Promise<{
+export async function verifyDriveAccess(folderEnvVar: string = 'GDRIVE_FOLDER_ID'): Promise<{
   configured: boolean;
   ok: boolean;
   folderName?: string;
   error?: string;
 }> {
-  if (!driveConfigured()) return { configured: false, ok: false };
+  if (!driveConfigured(folderEnvVar)) return { configured: false, ok: false };
   try {
-    const { drive, folderId } = getDrive();
+    const { drive, folderId } = getDrive(folderEnvVar);
     const res = await drive.files.get({
       fileId: folderId,
       fields: 'id, name',

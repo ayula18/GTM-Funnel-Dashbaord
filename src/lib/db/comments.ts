@@ -84,6 +84,7 @@ export interface LIPost {
   created_at: string;
   last_scraped: string | null;
   comment_count?: number;
+  reaction_count?: number;
   profile_count?: number;
 }
 
@@ -101,12 +102,15 @@ export async function createPost(campaignTag: string, postUrl: string, postTitle
 export async function getPostsByCampaign(campaignTag: string): Promise<LIPost[]> {
   return qp<LIPost>(
     `SELECT p.*,
-            COUNT(DISTINCT c.id) AS comment_count,
-            COUNT(DISTINCT c.profile_id) AS profile_count
+            (SELECT COUNT(*) FROM linkedin_comments c WHERE c.post_id = p.id) AS comment_count,
+            (SELECT COUNT(*) FROM linkedin_reactions r WHERE r.post_id = p.id) AS reaction_count,
+            (SELECT COUNT(DISTINCT profile_id) FROM (
+               SELECT profile_id FROM linkedin_comments WHERE post_id = p.id
+               UNION
+               SELECT profile_id FROM linkedin_reactions WHERE post_id = p.id
+            ) t) AS profile_count
      FROM linkedin_posts p
-     LEFT JOIN linkedin_comments c ON c.post_id = p.id
      WHERE p.campaign_tag = $1
-     GROUP BY p.id
      ORDER BY p.created_at DESC`,
     [campaignTag]
   );
@@ -728,8 +732,12 @@ export async function getEnrichedDomainsForClassification(campaignTag: string): 
   return qp(
     `SELECT DISTINCT pr.id AS "profileId", pr.slug AS "profileSlug", pr.enriched_company_domain AS domain, pr.enriched_company_name AS "companyName"
      FROM linkedin_profiles pr
-     JOIN linkedin_comments c ON c.profile_id = pr.id
-     JOIN linkedin_posts p ON p.id = c.post_id
+     JOIN (
+       SELECT profile_id, post_id FROM linkedin_comments
+       UNION
+       SELECT profile_id, post_id FROM linkedin_reactions
+     ) interactions ON interactions.profile_id = pr.id
+     JOIN linkedin_posts p ON p.id = interactions.post_id
      WHERE p.campaign_tag = $1
        AND pr.enriched_company_domain IS NOT NULL
        AND pr.enriched_company_domain != ''

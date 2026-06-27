@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Eye,
   Plus,
   Link2,
   Trash2,
@@ -34,6 +35,7 @@ import {
   Pencil,
   Check,
   X,
+  HardDrive,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -46,6 +48,7 @@ interface Post {
   post_title: string | null;
   last_scraped: string | null;
   comment_count: number;
+  reaction_count: number;
   profile_count: number;
 }
 
@@ -122,6 +125,11 @@ const IcpBadge = ({ status }: { status: string | null }) => {
       <XCircle className="w-2.5 h-2.5 mr-1" /> Non-ICP
     </Badge>
   );
+  if (s === 'review') return (
+    <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/30 text-[10px]">
+      <Eye className="w-2.5 h-2.5 mr-1" /> Review
+    </Badge>
+  );
   return (
     <Badge variant="secondary" className="text-[10px]">
       <AlertCircle className="w-2.5 h-2.5 mr-1" /> Pending
@@ -134,7 +142,19 @@ const IcpBadge = ({ status }: { status: string | null }) => {
 export default function CommentIntelPage() {
   // Campaign selection
   const [campaignTags, setCampaignTags] = useState<string[]>([]);
-  const [selectedCampaign, setSelectedCampaign] = useState<string>('');
+  const [selectedCampaign, setSelectedCampaignRaw] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('commentIntel_selectedCampaign') || '';
+    }
+    return '';
+  });
+  const setSelectedCampaign = useCallback((val: string) => {
+    setSelectedCampaignRaw(val);
+    if (typeof window !== 'undefined') {
+      if (val) localStorage.setItem('commentIntel_selectedCampaign', val);
+      else localStorage.removeItem('commentIntel_selectedCampaign');
+    }
+  }, []);
   const [newCampaignName, setNewCampaignName] = useState('');
   const [showNewCampaign, setShowNewCampaign] = useState(false);
 
@@ -171,6 +191,7 @@ export default function CommentIntelPage() {
   // Enrichment
   const [isEnriching, setIsEnriching] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
+  const [isSyncingDrive, setIsSyncingDrive] = useState(false);
   const [activeFunnelId, setActiveFunnelId] = useState<number | null>(null);
 
   const [pipelineState, setPipelineState] = useState<{
@@ -512,12 +533,38 @@ export default function CommentIntelPage() {
   };
 
   const handleExportProfiles = () => {
-    const header = 'Name,Slug,Profile URL,Headline,Parsed Company,Comment Count';
+    const header = 'Name,Slug,Profile URL,Headline,Parsed Company,Comment Count,Reaction Count,Interaction Type';
     const esc = (s: string) => '"' + (s || '').replace(/"/g, '""') + '"';
     const rows = profiles.map(p =>
-      [esc(p.name), esc(p.slug), esc(p.profile_url), esc(p.headline || ''), esc(p.parsed_company || ''), String(p.comment_count)].join(',')
+      [esc(p.name), esc(p.slug), esc(p.profile_url), esc(p.headline || ''), esc(p.parsed_company || ''), String(p.comment_count), String(p.reaction_count), esc(p.interaction_type || '')].join(',')
     );
     downloadFile('\uFEFF' + [header, ...rows].join('\n'), `comment_intel_${selectedCampaign}_${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  const handleSyncToDrive = async () => {
+    if (!selectedCampaign) return;
+    setIsSyncingDrive(true);
+    try {
+      const res = await fetch('/api/comments/export/drive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaign_tag: selectedCampaign }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to sync to Drive');
+      
+      toast.success(data.updated ? 'Updated Google Drive Sheet' : 'Created Google Drive Sheet', {
+        description: 'Successfully synced Comment Intel data.',
+        action: {
+          label: 'Open',
+          onClick: () => window.open(data.link, '_blank')
+        }
+      });
+    } catch (err) {
+      toast.error('Drive Sync Failed', { description: (err as Error).message });
+    } finally {
+      setIsSyncingDrive(false);
+    }
   };
 
   const doCopy = (text: string, label: string) => {
@@ -578,9 +625,25 @@ export default function CommentIntelPage() {
           )}
 
           {selectedCampaign && (
-            <Button variant="outline" size="sm" onClick={refreshAll}>
-              <RefreshCw className="w-3 h-3 mr-1.5" /> Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={refreshAll}>
+                <RefreshCw className="w-3 h-3 mr-1.5" /> Refresh
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSyncToDrive} 
+                disabled={isSyncingDrive}
+                className={isSyncingDrive ? 'opacity-70' : ''}
+              >
+                {isSyncingDrive ? (
+                  <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
+                ) : (
+                  <HardDrive className="w-3 h-3 mr-1.5" />
+                )}
+                {isSyncingDrive ? 'Syncing...' : 'Sync to Drive'}
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -774,6 +837,7 @@ export default function CommentIntelPage() {
                         </a>
                         <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-foreground">
                           <span>{post.comment_count} comments</span>
+                          <span>{post.reaction_count || 0} reactions</span>
                           <span>{post.profile_count} unique profiles</span>
                         </div>
                       </div>
@@ -1126,6 +1190,7 @@ export default function CommentIntelPage() {
                           </div>
                           <div className="flex items-center gap-3">
                             <Badge className="text-[10px]">{p.comment_count} comments</Badge>
+                            <Badge variant="outline" className="text-[10px]">{p.reaction_count} reactions</Badge>
                             <IcpBadge status={p.icp_status} />
                           </div>
                         </div>

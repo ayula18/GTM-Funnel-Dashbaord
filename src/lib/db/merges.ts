@@ -90,8 +90,8 @@ export async function findCompanyByDomainSmart(
     const normalizedName = normalizeCompanyName(companyName);
     if (normalizedName && normalizedName.length >= 3) {
       const candidates = await qp(
-        "SELECT id, domain, company_name FROM companies WHERE company_name IS NOT NULL AND company_name != '' AND domain != $1",
-        [domain],
+        "SELECT id, domain, company_name FROM companies WHERE company_name IS NOT NULL AND company_name != '' AND domain != $1 AND company_name ILIKE $2 LIMIT 10",
+        [domain, `%${normalizedName}%`],
       );
       for (const c of candidates) {
         if (isJunkName(c.company_name as string)) continue;
