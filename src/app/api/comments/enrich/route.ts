@@ -31,16 +31,10 @@ export async function POST(request: Request) {
     let companyIdx = headers.findIndex(h =>
       (h.includes('company') && !h.includes('linkedin')) || h === 'company name' || h === 'company_name'
     );
-    if (companyIdx < 0) {
-      companyIdx = headers.findIndex(h => h === 'org');
-    }
 
     let domainIdx = headers.findIndex(h =>
       h.includes('domain') || h === 'website' || h === 'domain_url'
     );
-    if (domainIdx < 0) {
-      domainIdx = headers.findIndex(h => h === 'org');
-    }
     const companyLinkedinIdx = headers.findIndex(h =>
       h === 'company linkedin' || h === 'company linkedin url' || h === 'company_linkedin_url'
     );
