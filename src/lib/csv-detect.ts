@@ -150,6 +150,12 @@ export const COLUMN_MAP: Record<string, string> = {
   'funding total':          'crunchbase_funding',
   'crunchbase_funding':     'crunchbase_funding',
 
+  // Crunchbase currency code column (e.g. "KRW", "JPY") — transient: used at
+  // import time to convert crunchbase_funding to USD, then dropped (never stored).
+  'total funding amount currency': '_funding_currency',
+  'funding currency':              '_funding_currency',
+  'currency':                      '_funding_currency',
+
   'latest funding':         'latest_funding',
   'latest funding type':    'latest_funding',
   'last funding type':      'latest_funding',

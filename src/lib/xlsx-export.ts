@@ -48,6 +48,7 @@ const FINAL_OUTPUT_COLUMNS: Array<[string, string]> = [
   ['is_in_apollo', 'Is In Apollo'],
   ['employee_reo', 'ReoDB employee count'],
   ['apollo_employees', 'Apollo Employee Count'],
+  ['crunchbase_employees', 'Crunchbase Employee Count'],
   ['icp_decision', 'Is ICP'],
   ['is_services', 'Is Services?'],
   ['is_netnew', 'Is NetNew?'],

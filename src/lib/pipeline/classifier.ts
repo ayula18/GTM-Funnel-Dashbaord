@@ -148,6 +148,15 @@ The question is: who is the PRIMARY end user of the CORE product?
 - Brevo (primary user = marketer sending campaigns, API is secondary) → Not Relevant
 - Genesys (primary user = contact center agent, developer APIs exist for customisation) → Not Relevant
 - Odoo (primary user = business operations, has module framework) → Not Relevant
+- Appian / Decisions (primary user = business operations teams doing process automation) → Not Relevant
+- WiseTech CargoWise (primary user = supply chain/logistics managers) → Not Relevant
+
+SPECIAL TRAP — "SOFTWARE-DEFINED" HARDWARE: Some hardware companies
+market their physical chips/devices as "software-defined" or "programmable".
+This does NOT make them a devtool. Ask: is the core deliverable a physical
+product (chip, antenna, sensor, headset) or a software subscription?
+- EdgeQ ("software-defined 5G chip") → still a physical SoC chip → Not Relevant
+- Meter ("cloud-managed" switches) → still sells physical network hardware → borderline
 
 THE LITMUS TEST: Mentally remove the API/SDK/developer-docs from the
 product. Is the remaining core product STILL used by engineers? If yes →
@@ -193,15 +202,23 @@ INDUSTRY PROFESSIONAL use it through a GUI to do their domain job?
 DIGITAL VS PHYSICAL ENGINEERING (CRITICAL BOUNDARY):
 The "engineering function" we target is STRICTLY digital engineering: software engineering, data engineering, cloud/IT infrastructure, platform engineering, and cybersecurity. 
 
-It does NOT include physical, mechanical, or civil engineering disciplines.
+It does NOT include physical, mechanical, civil, RF, or hardware engineering disciplines.
 - 3D CAD/CAM software (e.g. SolidWorks, AutoCAD) → Users are mechanical/design engineers, NOT software engineers. NOT ICP.
 - Industrial IoT / predictive maintenance software → Users are factory operators or maintenance engineers for physical machines. NOT ICP.
 - Robotics & Drone platforms (unless strictly a developer framework like ROS) → Users are robotics/hardware engineers or operators. NOT ICP.
 - Civil engineering and 3D printing software → Users are civil/hardware engineers. NOT ICP.
+- Semiconductor / materials companies (Atomic Layer Deposition, coating tech, chip fabrication) → Users are materials scientists and fab engineers running PHYSICAL manufacturing processes. NOT ICP. Even if they say "engineers use it", these are hardware/process engineers, not software engineers.
+- 5G chip / SoC companies (e.g. system-on-chip, baseband chips, RF chips) → Physical silicon hardware. Even if marketed as "software-defined" or "programmable", the product is a physical chip. NOT ICP.
+- PCB manufacturing, EDA for physical circuit design → Users are electronics/hardware engineers. NOT ICP.
+- IoT antenna / RF component companies → Physical hardware components. NOT ICP.
+- Manufacturing automation hardware (robotic arms, conveyor systems with a cloud portal) → Physical factory machinery. NOT ICP.
+- Safety monitoring hardware (gas detectors, lone-worker sensors) → Users are industrial safety officers. NOT ICP.
 
 The Litmus Test for "Engineers": 
 If the user builds software applications, APIs, data pipelines, cloud networks, or secures digital assets → YES, DevTool. 
-If the user designs physical buildings, mechanical parts, circuits, or maintains physical factory machines → NO, Not Relevant.
+If the user designs physical buildings, mechanical parts, circuits, silicon chips, or maintains physical factory machines → NO, Not Relevant.
+
+CRITICAL: The word "engineers" in a classification reason is NOT sufficient. You must ask: are these SOFTWARE/DIGITAL engineers, or HARDWARE/PHYSICAL engineers? Only the former is ICP.
 
 HARDWARE DEVICES (Never ICP):
 Companies that primarily build PHYSICAL PRODUCTS (robots, drones, satellites, LiDAR, autonomous vehicles, displays, sensors) are NOT devtools, even if they use sophisticated software internally.
@@ -256,9 +273,32 @@ ANTI-ICP — ALWAYS "Not Relevant"
 
 • LOGISTICS, SUPPLY CHAIN & FLEET MANAGEMENT:
   Fleet tracking, route optimisation, transport management, telematics,
-  freight forwarding, warehouse management (non-robotic), delivery ops.
-  Users are fleet managers, logistics planners, drivers, dispatchers.
-  Examples: Motive, Samsara, FarEye, Pando, FleetX, FareEye.
+  freight forwarding, warehouse management (non-robotic), delivery ops,
+  supply chain execution platforms, roadway intelligence systems.
+  Users are fleet managers, logistics planners, drivers, dispatchers,
+  supply chain managers, traffic planners.
+  Examples: Motive, Samsara, FarEye, Pando, FleetX, FareEye,
+  WiseTech Global (CargoWise - logistics teams), Rekor (traffic data),
+  Auger (supply chain ops), Govini (defense procurement).
+  → Not Relevant.
+
+• TELECOM OPERATORS & ISPs:
+  Companies that BUILD and OPERATE telecommunications networks
+  (mobile, fibre, satellite, broadband) and sell connectivity as a service.
+  These are infrastructure PROVIDERS, not software TOOLS.
+  Their customers are businesses buying connectivity, not engineers buying devtools.
+  Examples: Telecom Italia, Sewan, Aurora Telecom, Cedar Point Communications,
+  4iG, Tawal, Globalstar (satellite connectivity), Comtech (satellite telco).
+  → Not Relevant.
+  EXCEPTION: Pure network software/APIs for developers (Twilio, Vonage) → DevTool.
+  Note: A telecom company saying "engineers use our network" does NOT make it a devtool.
+  The test: does a software engineer buy THIS product to build their application,
+  or do they just USE the internet it provides?
+
+• SPORTS ANALYTICS & PERFORMANCE:
+  Athletic performance platforms, sports data analytics, player health monitoring.
+  Users are coaches, athletic trainers, sports scientists — not software engineers.
+  Examples: Kitman Labs, Catapult Sports.
   → Not Relevant.
 
 • ERP, FINANCE & PROCUREMENT:
@@ -277,10 +317,14 @@ ANTI-ICP — ALWAYS "Not Relevant"
 
 • HARDWARE, ROBOTICS & AEROSPACE:
   Physical robots, drones, satellites, autonomous vehicles, sensors,
-  LiDAR, displays. The product is a physical device, not a software tool.
-  Examples: 3DR, Agile Robots, Bear Robotics, ABL Space, Aeva.
+  LiDAR, displays, VR/XR headsets, 5G SoC chips, PCB assembly,
+  antenna/RF components, industrial gas detectors.
+  The product is a physical device, not a software tool.
+  Examples: 3DR, Agile Robots, Bear Robotics, ABL Space, Aeva,
+  Varjo (VR headsets), Taoglas (RF antennas), EdgeQ (5G chips),
+  MacroFab (PCB), Blackline Safety (gas detectors), Forge Nano (ALD coatings).
   → Not Relevant.
-  EXCEPTION: Robotics software platforms for engineers → DevTool.
+  EXCEPTION: Robotics SOFTWARE platforms where engineers write code → DevTool.
 
 • CONTACT CENTER & CUSTOMER ENGAGEMENT:
   Contact center platforms, customer support chatbots, help desk,
@@ -368,7 +412,7 @@ OUTPUT — return ONLY valid JSON
   "has_pricing": true or false,
   "has_signup": true or false,
   "is_nonprofit": true or false,
-  "reason": "2-3 sentences. State who the primary end users are and what they do with the product. Cite evidence from the scraped data."
+  "reason": "2-3 sentences. State who the primary end users are and what they do with the product. CRITICAL: If the company provides Developer APIs, SDKs, Open Source, or Technical Infrastructure, you MUST explicitly mention it here so downstream auditors can see it. Cite evidence from the scraped data."
 }
 
 HARD RULES:
@@ -536,7 +580,7 @@ Scrape Status: ${signals.scrape_status}`;
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.1,
-        max_tokens: 500,
+        max_tokens: 800,
         response_format: { type: 'json_object' }
       });
 

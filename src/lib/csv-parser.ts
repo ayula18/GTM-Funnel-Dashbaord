@@ -22,6 +22,7 @@ import {
 } from './db';
 import type { BatchChangeRow, UpsertResult, MatchDecisionRow } from './db';
 import { MAPPABLE_FIELD_SET } from './source-policy';
+import { knownCurrency, currencyFromSymbol, toUsd } from './currency';
 import { CsvSourceType, UploadResult } from './types';
 
 // ── Column Mapping ─────────────────────────────────────────────────────
@@ -338,10 +339,12 @@ export async function processRowBatch(input: ProcessRowBatchInput): Promise<Proc
       seenDomains.add(domain);
 
       const companyData: Record<string, unknown> = { domain };
+      let rawCrunchbaseFunding: string | undefined; // pre-strip cell, for currency-symbol detection
 
       for (const [colIdx, field] of Object.entries(columnMapping)) {
         const value = row[parseInt(colIdx)]?.trim();
         if (!value || value === '') continue;
+        if (field === 'crunchbase_funding') rawCrunchbaseFunding = value;
 
         switch (field) {
           case 'domain':
@@ -378,6 +381,26 @@ export async function processRowBatch(input: ProcessRowBatchInput): Promise<Proc
       if (!companyData.website) {
         companyData.website = `https://${domain}`;
       }
+
+      // ── Crunchbase funding → USD ──────────────────────────────────────
+      // Convert to USD ONLY on an EXPLICIT currency signal: a currency column or
+      // an unambiguous symbol in the cell. We deliberately do NOT infer from
+      // country — many companies (esp. India/Israel) report funding in USD on
+      // Crunchbase, so a country guess wrongly shrinks already-USD values. No
+      // signal ⇒ leave the number exactly as uploaded.
+      if (
+        sourceType === 'crunchbase' &&
+        typeof companyData.crunchbase_funding === 'number' &&
+        companyData.crunchbase_funding > 0
+      ) {
+        const currency =
+          knownCurrency(companyData._funding_currency as string | undefined) ??
+          currencyFromSymbol(rawCrunchbaseFunding);
+        if (currency) {
+          companyData.crunchbase_funding = toUsd(companyData.crunchbase_funding, currency);
+        }
+      }
+      delete companyData._funding_currency; // transient — never a DB column
 
       if (sourceType === 'apollo') {
         companyData.is_in_apollo = 1;

@@ -193,7 +193,7 @@ export async function POST(request: Request) {
     // Track how many chunks have been committed so the resume endpoint can
     // reconstruct the exact state if the browser drops mid-upload.
     if (batchId) {
-      const chunkIndex = Math.round(
+      const chunkIndex = isLast ? chunksTotal : Math.ceil(
         ((prevTotals.total_rows ?? 0) + chunkStats.total_rows) / 25,
       );
       await updateChunkProgress(batchId, chunkIndex).catch(() => { /* non-fatal */ });

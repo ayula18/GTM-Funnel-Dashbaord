@@ -14,6 +14,10 @@ import {
   MessageSquareText,
   Settings,
   ChevronDown,
+  Radar,
+  Rss,
+  UserCheck,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,6 +47,17 @@ const sections: NavSection[] = [
       { name: 'Campaigns', href: '/marketing/campaigns', icon: Megaphone },
       { name: 'Comment Intel', href: '/marketing/comments', icon: MessageSquareText },
       { name: 'Already Customer', href: '/marketing/customers', icon: Database },
+    ],
+  },
+  {
+    label: 'Signals',
+    icon: Radar,
+    items: [
+      { name: 'Signal Board', href: '/signals', icon: Radar },
+      { name: 'Upload Targets', href: '/signals/upload', icon: Upload },
+      { name: 'ICP Auditor', href: '/signals/audit', icon: Shield },
+      { name: 'Signal Feed', href: '/signals/feed', icon: Rss },
+      { name: 'SDR Queue', href: '/signals/queue', icon: UserCheck },
     ],
   },
 ];

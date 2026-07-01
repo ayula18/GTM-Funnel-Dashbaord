@@ -1,0 +1,3262 @@
+{
+  "all": [
+    {
+      "category": "Cloud Infrastructure & Compute",
+      "count": "465"
+    },
+    {
+      "category": "AI/ML Infrastructure & MLOps",
+      "count": "285"
+    },
+    {
+      "category": "Application Security (SAST/DAST/SCA)",
+      "count": "240"
+    },
+    {
+      "category": "Data Infrastructure & Pipelines",
+      "count": "221"
+    },
+    {
+      "category": "Cloud Consulting",
+      "count": "218"
+    },
+    {
+      "category": "Cloud & Runtime Security",
+      "count": "169"
+    },
+    {
+      "category": "Observability & APM",
+      "count": "118"
+    },
+    {
+      "category": "Payments & FinTech Infrastructure",
+      "count": "94"
+    },
+    {
+      "category": "API Platform & Gateway",
+      "count": "80"
+    },
+    {
+      "category": "AI Developer Tools & LLM Infra",
+      "count": "76"
+    },
+    {
+      "category": "Identity & Access Management",
+      "count": "76"
+    },
+    {
+      "category": "CI/CD & Build Systems",
+      "count": "70"
+    },
+    {
+      "category": "Testing & QA Automation",
+      "count": "68"
+    },
+    {
+      "category": "Infrastructure as Code",
+      "count": "57"
+    },
+    {
+      "category": "Workflow Automation & iPaaS",
+      "count": "46"
+    },
+    {
+      "category": "Database & Storage",
+      "count": "42"
+    },
+    {
+      "category": "Networking & Service Mesh",
+      "count": "30"
+    },
+    {
+      "category": "Application Security",
+      "count": "30"
+    },
+    {
+      "category": "Incident Management & On-Call",
+      "count": "30"
+    },
+    {
+      "category": "Blockchain Infrastructure",
+      "count": "27"
+    },
+    {
+      "category": "Custom Software Development",
+      "count": "25"
+    },
+    {
+      "category": "Code Quality & Static Analysis",
+      "count": "25"
+    },
+    {
+      "category": "Low-Code & Internal Tooling",
+      "count": "24"
+    },
+    {
+      "category": "FinOps & Cloud Cost Management",
+      "count": "24"
+    },
+    {
+      "category": "Digital Transformation Consulting",
+      "count": "19"
+    },
+    {
+      "category": "Digital Transformation",
+      "count": "19"
+    },
+    {
+      "category": "Backend & Server Infrastructure",
+      "count": "19"
+    },
+    {
+      "category": "Container & Orchestration",
+      "count": "19"
+    },
+    {
+      "category": "Developer Communications Infra",
+      "count": "16"
+    },
+    {
+      "category": "Mobile Development",
+      "count": "14"
+    },
+    {
+      "category": "IT Consulting",
+      "count": "14"
+    },
+    {
+      "category": "Cybersecurity",
+      "count": "13"
+    },
+    {
+      "category": "Cybersecurity Consulting",
+      "count": "13"
+    },
+    {
+      "category": "Software Development",
+      "count": "12"
+    },
+    {
+      "category": "Content Management Systems",
+      "count": "9"
+    },
+    {
+      "category": "Managed IT Services",
+      "count": "9"
+    },
+    {
+      "category": "Frontend & Web Development",
+      "count": "8"
+    },
+    {
+      "category": "Game Development",
+      "count": "8"
+    },
+    {
+      "category": "Consulting",
+      "count": "8"
+    },
+    {
+      "category": "Backup & Disaster Recovery",
+      "count": "6"
+    },
+    {
+      "category": "Network Security",
+      "count": "6"
+    },
+    {
+      "category": "Developer Productivity",
+      "count": "6"
+    },
+    {
+      "category": "Identity Verification",
+      "count": "6"
+    },
+    {
+      "category": "Feature Management & Experimentation",
+      "count": "6"
+    },
+    {
+      "category": "Web Development",
+      "count": "6"
+    },
+    {
+      "category": "Data Security & Governance",
+      "count": "6"
+    },
+    {
+      "category": "IT Outsourcing",
+      "count": "5"
+    },
+    {
+      "category": "Mobile Device Management",
+      "count": "5"
+    },
+    {
+      "category": "IoT Connectivity",
+      "count": "5"
+    },
+    {
+      "category": "Cyber Security",
+      "count": "5"
+    },
+    {
+      "category": "Systems Integration",
+      "count": "5"
+    },
+    {
+      "category": "Workflow Automation",
+      "count": "5"
+    },
+    {
+      "category": "Networking & Security",
+      "count": "4"
+    },
+    {
+      "category": "Managed IT Solutions",
+      "count": "4"
+    },
+    {
+      "category": "IoT Solutions",
+      "count": "4"
+    },
+    {
+      "category": "Backup & Recovery",
+      "count": "4"
+    },
+    {
+      "category": "Blockchain Development",
+      "count": "4"
+    },
+    {
+      "category": "Email Security",
+      "count": "4"
+    },
+    {
+      "category": "Secrets Management",
+      "count": "4"
+    },
+    {
+      "category": "IoT Device Management",
+      "count": "4"
+    },
+    {
+      "category": "API Management",
+      "count": "4"
+    },
+    {
+      "category": "Source Code Management & Version Control",
+      "count": "4"
+    },
+    {
+      "category": "Artifact & Package Management",
+      "count": "4"
+    },
+    {
+      "category": "IDE & Developer Productivity",
+      "count": "4"
+    },
+    {
+      "category": "Cybersecurity Services",
+      "count": "4"
+    },
+    {
+      "category": "IT Service Management",
+      "count": "4"
+    },
+    {
+      "category": "Blockchain Solutions",
+      "count": "3"
+    },
+    {
+      "category": "DevOps",
+      "count": "3"
+    },
+    {
+      "category": "Quantum Computing",
+      "count": "3"
+    },
+    {
+      "category": "Business Process Automation",
+      "count": "3"
+    },
+    {
+      "category": "Endpoint Management",
+      "count": "3"
+    },
+    {
+      "category": "Product Lifecycle Management",
+      "count": "3"
+    },
+    {
+      "category": "Security Awareness Training",
+      "count": "3"
+    },
+    {
+      "category": "Compliance & Risk Management",
+      "count": "3"
+    },
+    {
+      "category": "Cloud Solutions",
+      "count": "3"
+    },
+    {
+      "category": "Identity Security",
+      "count": "3"
+    },
+    {
+      "category": "Digital Transformation Services",
+      "count": "3"
+    },
+    {
+      "category": "Localization & Translation",
+      "count": "3"
+    },
+    {
+      "category": "Compliance Automation",
+      "count": "3"
+    },
+    {
+      "category": "Product Analytics",
+      "count": "3"
+    },
+    {
+      "category": "Cybersecurity Training & Simulation",
+      "count": "3"
+    },
+    {
+      "category": "Logging & Tracing",
+      "count": "3"
+    },
+    {
+      "category": "Cloud Engineering",
+      "count": "3"
+    },
+    {
+      "category": "Communications Infrastructure",
+      "count": "3"
+    },
+    {
+      "category": "Data Center Services",
+      "count": "2"
+    },
+    {
+      "category": "IoT Connectivity Management",
+      "count": "2"
+    },
+    {
+      "category": "Digital Experience Platform",
+      "count": "2"
+    },
+    {
+      "category": "Review",
+      "count": "2"
+    },
+    {
+      "category": "Configuration Management",
+      "count": "2"
+    },
+    {
+      "category": "Digital Engineering",
+      "count": "2"
+    },
+    {
+      "category": "Risk Management & Compliance",
+      "count": "2"
+    },
+    {
+      "category": "Cloud Enablement",
+      "count": "2"
+    },
+    {
+      "category": "eCommerce Platform",
+      "count": "2"
+    },
+    {
+      "category": "Data Security & Protection",
+      "count": "2"
+    },
+    {
+      "category": "Project Portfolio Management",
+      "count": "2"
+    },
+    {
+      "category": "Cloud Security",
+      "count": "2"
+    },
+    {
+      "category": "Data Streaming & Messaging",
+      "count": "2"
+    },
+    {
+      "category": "Unified Communications & Collaboration",
+      "count": "2"
+    },
+    {
+      "category": "Technical Consulting",
+      "count": "2"
+    },
+    {
+      "category": "Cybersecurity & Defense Solutions",
+      "count": "2"
+    },
+    {
+      "category": "IoT Platform",
+      "count": "2"
+    },
+    {
+      "category": "Digital Consulting",
+      "count": "2"
+    },
+    {
+      "category": "Serverless & Edge Computing",
+      "count": "2"
+    },
+    {
+      "category": "Cyber Operations",
+      "count": "2"
+    },
+    {
+      "category": "Cybersecurity Training",
+      "count": "2"
+    },
+    {
+      "category": "Consulting Services",
+      "count": "2"
+    },
+    {
+      "category": "Cybersecurity Solutions",
+      "count": "2"
+    },
+    {
+      "category": "Data Security",
+      "count": "2"
+    },
+    {
+      "category": "Developer Marketing & Revenue Intelligence",
+      "count": "2"
+    },
+    {
+      "category": "Endpoint Management & Security",
+      "count": "2"
+    },
+    {
+      "category": "Insurance Technology",
+      "count": "2"
+    },
+    {
+      "category": "Digital Product Development",
+      "count": "2"
+    },
+    {
+      "category": "Business Transformation",
+      "count": "2"
+    },
+    {
+      "category": "Travel Technology",
+      "count": "2"
+    },
+    {
+      "category": "Telecoms",
+      "count": "2"
+    },
+    {
+      "category": "Embedded Systems & IoT",
+      "count": "2"
+    },
+    {
+      "category": "Automotive Software",
+      "count": "2"
+    },
+    {
+      "category": "Cloud & DevOps",
+      "count": "2"
+    },
+    {
+      "category": "API Security",
+      "count": "2"
+    },
+    {
+      "category": "Cloud Services",
+      "count": "2"
+    },
+    {
+      "category": "Fraud Detection & Risk Management",
+      "count": "2"
+    },
+    {
+      "category": "Data Governance",
+      "count": "2"
+    },
+    {
+      "category": "Analytics & Monitoring",
+      "count": "2"
+    },
+    {
+      "category": "Network Management",
+      "count": "2"
+    },
+    {
+      "category": "IoT Infrastructure",
+      "count": "2"
+    },
+    {
+      "category": "SAP Consulting",
+      "count": "2"
+    },
+    {
+      "category": "Digital Product Engineering",
+      "count": "2"
+    },
+    {
+      "category": "File Sharing & Collaboration",
+      "count": "2"
+    },
+    {
+      "category": "Application Security Testing",
+      "count": "2"
+    },
+    {
+      "category": "AI Services",
+      "count": "2"
+    },
+    {
+      "category": "Quality Assurance & Testing",
+      "count": "2"
+    },
+    {
+      "category": "Network & Endpoint Security",
+      "count": "2"
+    },
+    {
+      "category": "Cyber Digital Solutions",
+      "count": "2"
+    },
+    {
+      "category": "Simulation Software",
+      "count": "2"
+    },
+    {
+      "category": "Localization & Translation Management",
+      "count": "2"
+    },
+    {
+      "category": "Cloud Communications",
+      "count": "2"
+    },
+    {
+      "category": "IT Managed Services",
+      "count": "2"
+    },
+    {
+      "category": "AI Consulting",
+      "count": "2"
+    },
+    {
+      "category": "Financial Technology",
+      "count": "2"
+    },
+    {
+      "category": "Data Security & Compliance",
+      "count": "2"
+    },
+    {
+      "category": "Operating Systems",
+      "count": "2"
+    },
+    {
+      "category": "Managed Services",
+      "count": "2"
+    },
+    {
+      "category": "Construction Management Software",
+      "count": "2"
+    },
+    {
+      "category": "Cloud Transformation",
+      "count": "2"
+    },
+    {
+      "category": "Data Security & Privacy",
+      "count": "2"
+    },
+    {
+      "category": "Project Management",
+      "count": "2"
+    },
+    {
+      "category": "Cloud & Runtime Security (CSPM/CWPP)",
+      "count": "2"
+    },
+    {
+      "category": "Digital Engineering & MBSE",
+      "count": "2"
+    },
+    {
+      "category": "Digital Twin Technology",
+      "count": "2"
+    },
+    {
+      "category": "Fund Administration & Registry Services",
+      "count": "1"
+    },
+    {
+      "category": "Business Process Management and Compliance",
+      "count": "1"
+    },
+    {
+      "category": "Search & Retrieval",
+      "count": "1"
+    },
+    {
+      "category": "Blockchain & AI Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Cloud & AI Security",
+      "count": "1"
+    },
+    {
+      "category": "Application Portfolio Management",
+      "count": "1"
+    },
+    {
+      "category": "Maintenance Management",
+      "count": "1"
+    },
+    {
+      "category": "Gaming Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Routing & Geolocation",
+      "count": "1"
+    },
+    {
+      "category": "IT Consulting Services",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity Management",
+      "count": "1"
+    },
+    {
+      "category": "Threat Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "AI Transformation & Engineering Training",
+      "count": "1"
+    },
+    {
+      "category": "Data Streaming",
+      "count": "1"
+    },
+    {
+      "category": "Customer Support Automation",
+      "count": "1"
+    },
+    {
+      "category": "Data Center Operations Optimization",
+      "count": "1"
+    },
+    {
+      "category": "IT Service Automation",
+      "count": "1"
+    },
+    {
+      "category": "Web Scraping & Data Extraction",
+      "count": "1"
+    },
+    {
+      "category": "Software Consultancy",
+      "count": "1"
+    },
+    {
+      "category": "Legacy Modernization",
+      "count": "1"
+    },
+    {
+      "category": "Media Services",
+      "count": "1"
+    },
+    {
+      "category": "3D Modeling & Visualization",
+      "count": "1"
+    },
+    {
+      "category": "Financial Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "File Sync & Share",
+      "count": "1"
+    },
+    {
+      "category": "Data Science & Analytics",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Security & Posture Management",
+      "count": "1"
+    },
+    {
+      "category": "Banking & Finance Software",
+      "count": "1"
+    },
+    {
+      "category": "Mobile App Development & Web Development",
+      "count": "1"
+    },
+    {
+      "category": "Video Conferencing",
+      "count": "1"
+    },
+    {
+      "category": "Policy Management",
+      "count": "1"
+    },
+    {
+      "category": "Monitoring & Observability",
+      "count": "1"
+    },
+    {
+      "category": "Compliance & Security",
+      "count": "1"
+    },
+    {
+      "category": "IT Staffing & Talent Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Billing & Rate Management",
+      "count": "1"
+    },
+    {
+      "category": "Automotive & Robotics",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity Training & Testing",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity & Cloud Services",
+      "count": "1"
+    },
+    {
+      "category": "Augmented Reality Development",
+      "count": "1"
+    },
+    {
+      "category": "E-commerce Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Market Research & Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "Digital Engineering & Manufacturing Services",
+      "count": "1"
+    },
+    {
+      "category": "Streaming & OTT Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Security Operations",
+      "count": "1"
+    },
+    {
+      "category": "Video Content Management System",
+      "count": "1"
+    },
+    {
+      "category": "DevOps Services",
+      "count": "1"
+    },
+    {
+      "category": "Network Test, Monitoring, and Assurance",
+      "count": "1"
+    },
+    {
+      "category": "Data Infrastructure & Management",
+      "count": "1"
+    },
+    {
+      "category": "Automotive Software Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Assessment & Evaluation",
+      "count": "1"
+    },
+    {
+      "category": "DevSecOps",
+      "count": "1"
+    },
+    {
+      "category": "Software Development & Testing",
+      "count": "1"
+    },
+    {
+      "category": "Live Streaming & Video Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Business Process Management",
+      "count": "1"
+    },
+    {
+      "category": "Enterprise Architecture Management",
+      "count": "1"
+    },
+    {
+      "category": "Identity & Fraud Prevention",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Integration",
+      "count": "1"
+    },
+    {
+      "category": "Network Management & Compliance",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Hosting",
+      "count": "1"
+    },
+    {
+      "category": "Embedded Analytics & Reporting",
+      "count": "1"
+    },
+    {
+      "category": "Edge Computing & IoT Solutions",
+      "count": "1"
+    },
+    {
+      "category": "AI Search & Conversational Discovery",
+      "count": "1"
+    },
+    {
+      "category": "Validation Automation",
+      "count": "1"
+    },
+    {
+      "category": "Managed Mobility Services",
+      "count": "1"
+    },
+    {
+      "category": "Electronic Signature Management",
+      "count": "1"
+    },
+    {
+      "category": "Engineering, Procurement and Construction Management",
+      "count": "1"
+    },
+    {
+      "category": "AI Engineering",
+      "count": "1"
+    },
+    {
+      "category": "Automotive Engineering",
+      "count": "1"
+    },
+    {
+      "category": "Mining Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Digital Technology & Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Security Services",
+      "count": "1"
+    },
+    {
+      "category": "Automation & Workflow",
+      "count": "1"
+    },
+    {
+      "category": "Network Observability",
+      "count": "1"
+    },
+    {
+      "category": "AI Infrastructure & Cloud Computing",
+      "count": "1"
+    },
+    {
+      "category": "Developer Education & Training",
+      "count": "1"
+    },
+    {
+      "category": "ERP Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Energy Management Software",
+      "count": "1"
+    },
+    {
+      "category": "Fraud Prevention & Financial Crime",
+      "count": "1"
+    },
+    {
+      "category": "Print API",
+      "count": "1"
+    },
+    {
+      "category": "Network Security Management",
+      "count": "1"
+    },
+    {
+      "category": "ESG Data Management",
+      "count": "1"
+    },
+    {
+      "category": "Economic Performance Strategy",
+      "count": "1"
+    },
+    {
+      "category": "Caching & Content Delivery",
+      "count": "1"
+    },
+    {
+      "category": "Documentation Automation",
+      "count": "1"
+    },
+    {
+      "category": "Access Control",
+      "count": "1"
+    },
+    {
+      "category": "Embedded Systems",
+      "count": "1"
+    },
+    {
+      "category": "Industrial IoT & Automation",
+      "count": "1"
+    },
+    {
+      "category": "Developer Marketing",
+      "count": "1"
+    },
+    {
+      "category": "Training & Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Virtual Reality & Augmented Reality",
+      "count": "1"
+    },
+    {
+      "category": "AI Automation",
+      "count": "1"
+    },
+    {
+      "category": "Automated Driving Software",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Compliance & Security",
+      "count": "1"
+    },
+    {
+      "category": "Enterprise Browser",
+      "count": "1"
+    },
+    {
+      "category": "Product Engineering & Consulting",
+      "count": "1"
+    },
+    {
+      "category": "VoiceAI & Communication Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Data & AI Consulting",
+      "count": "1"
+    },
+    {
+      "category": "IT Modernization",
+      "count": "1"
+    },
+    {
+      "category": "Networking & Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Authentication & User Management",
+      "count": "1"
+    },
+    {
+      "category": "Chatbot Platform",
+      "count": "1"
+    },
+    {
+      "category": "Industrial IoT & Smart Manufacturing",
+      "count": "1"
+    },
+    {
+      "category": "Managed Security",
+      "count": "1"
+    },
+    {
+      "category": "Geospatial Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "Not Specified",
+      "count": "1"
+    },
+    {
+      "category": "Social Media Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Smart Grid & Automation",
+      "count": "1"
+    },
+    {
+      "category": "Design & Prototyping",
+      "count": "1"
+    },
+    {
+      "category": "Media Management & Optimization",
+      "count": "1"
+    },
+    {
+      "category": "Retail Technology",
+      "count": "1"
+    },
+    {
+      "category": "SaaS Development",
+      "count": "1"
+    },
+    {
+      "category": "Enterprise Integration & APIs",
+      "count": "1"
+    },
+    {
+      "category": "Incident Management",
+      "count": "1"
+    },
+    {
+      "category": "Image Optimization & Delivery",
+      "count": "1"
+    },
+    {
+      "category": "Application Dependency Mapping",
+      "count": "1"
+    },
+    {
+      "category": "Data Storage Systems",
+      "count": "1"
+    },
+    {
+      "category": "Engineering & Project Management",
+      "count": "1"
+    },
+    {
+      "category": "Defense & Aerospace",
+      "count": "1"
+    },
+    {
+      "category": "IT Management & Monitoring",
+      "count": "1"
+    },
+    {
+      "category": "Java Runtimes",
+      "count": "1"
+    },
+    {
+      "category": "AV Design & Integration",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity Advisory Services",
+      "count": "1"
+    },
+    {
+      "category": "Analytics Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Chaos Engineering",
+      "count": "1"
+    },
+    {
+      "category": "Investment Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity & AI Solutions",
+      "count": "1"
+    },
+    {
+      "category": "DevOps & AIOps Platforms",
+      "count": "1"
+    },
+    {
+      "category": "Professional Services",
+      "count": "1"
+    },
+    {
+      "category": "Embedded Linux Tools and Services",
+      "count": "1"
+    },
+    {
+      "category": "Jobsite Workflow Management",
+      "count": "1"
+    },
+    {
+      "category": "Infrastructure Monitoring",
+      "count": "1"
+    },
+    {
+      "category": "Healthcare Software Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Managed Communications",
+      "count": "1"
+    },
+    {
+      "category": "DevOps & Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "E-Commerce Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Industrial Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "Security Response Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Crowd-Powered Innovation",
+      "count": "1"
+    },
+    {
+      "category": "Manufacturing Execution Systems",
+      "count": "1"
+    },
+    {
+      "category": "Product Transformation",
+      "count": "1"
+    },
+    {
+      "category": "Identity Verification & Compliance",
+      "count": "1"
+    },
+    {
+      "category": "Command & Control Systems",
+      "count": "1"
+    },
+    {
+      "category": "System Engineering and Integration",
+      "count": "1"
+    },
+    {
+      "category": "UI Design",
+      "count": "1"
+    },
+    {
+      "category": "Digital Services",
+      "count": "1"
+    },
+    {
+      "category": "Engineering Simulation Software",
+      "count": "1"
+    },
+    {
+      "category": "Loan Management Software",
+      "count": "1"
+    },
+    {
+      "category": "Industrial DevOps",
+      "count": "1"
+    },
+    {
+      "category": "Web Data Collection",
+      "count": "1"
+    },
+    {
+      "category": "Investigative Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "Mobile Security",
+      "count": "1"
+    },
+    {
+      "category": "Requirements Management",
+      "count": "1"
+    },
+    {
+      "category": "File Transfer & Management",
+      "count": "1"
+    },
+    {
+      "category": "Cyber Risk Management",
+      "count": "1"
+    },
+    {
+      "category": "Fraud Detection & Security",
+      "count": "1"
+    },
+    {
+      "category": "Robotics & Automation",
+      "count": "1"
+    },
+    {
+      "category": "Asset Performance Management",
+      "count": "1"
+    },
+    {
+      "category": "Analytics",
+      "count": "1"
+    },
+    {
+      "category": "Web Design & Development",
+      "count": "1"
+    },
+    {
+      "category": "Device Management & IoT",
+      "count": "1"
+    },
+    {
+      "category": "Remote Desktop Software",
+      "count": "1"
+    },
+    {
+      "category": "Modeling & Simulation",
+      "count": "1"
+    },
+    {
+      "category": "Integration Platform as a Service (iPaaS)",
+      "count": "1"
+    },
+    {
+      "category": "Database Mesh",
+      "count": "1"
+    },
+    {
+      "category": "Code Visualization",
+      "count": "1"
+    },
+    {
+      "category": "AI & Data Services",
+      "count": "1"
+    },
+    {
+      "category": "Web3 Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "ICANN Accreditation Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Indoor Mapping & Wayfinding",
+      "count": "1"
+    },
+    {
+      "category": "Visual Asset Management",
+      "count": "1"
+    },
+    {
+      "category": "Data Integration",
+      "count": "1"
+    },
+    {
+      "category": "Edge Intelligence & Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "AR & VR Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Advertising & Monetization Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Gamification & Engagement",
+      "count": "1"
+    },
+    {
+      "category": "Travel & Hospitality Technology",
+      "count": "1"
+    },
+    {
+      "category": "PCB Design & Engineering",
+      "count": "1"
+    },
+    {
+      "category": "Repair Management",
+      "count": "1"
+    },
+    {
+      "category": "Airline Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Identity Verification & Digital Signatures",
+      "count": "1"
+    },
+    {
+      "category": "Disaster Recovery & SaaS",
+      "count": "1"
+    },
+    {
+      "category": "Blockchain & Digital Assets",
+      "count": "1"
+    },
+    {
+      "category": "Drone Inspection & Measurement",
+      "count": "1"
+    },
+    {
+      "category": "Data Modernization",
+      "count": "1"
+    },
+    {
+      "category": "Security Management",
+      "count": "1"
+    },
+    {
+      "category": "Blockchain & Decentralized Platforms",
+      "count": "1"
+    },
+    {
+      "category": "Accessibility Testing & Compliance",
+      "count": "1"
+    },
+    {
+      "category": "Continuous Compliance",
+      "count": "1"
+    },
+    {
+      "category": "Identity Security & Governance",
+      "count": "1"
+    },
+    {
+      "category": "Cloud & Real-Time Communication",
+      "count": "1"
+    },
+    {
+      "category": "Security Systems Integration",
+      "count": "1"
+    },
+    {
+      "category": "Managed Cloud Services",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Management Services",
+      "count": "1"
+    },
+    {
+      "category": "Collaboration & Development Tools",
+      "count": "1"
+    },
+    {
+      "category": "Analytics & Business Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "Product Engineering",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Migrations",
+      "count": "1"
+    },
+    {
+      "category": "AI Transformation & Engineering Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Asset Lifecycle Management",
+      "count": "1"
+    },
+    {
+      "category": "Custom Silicon",
+      "count": "1"
+    },
+    {
+      "category": "SAP Automation",
+      "count": "1"
+    },
+    {
+      "category": "Data Protection & Disaster Recovery",
+      "count": "1"
+    },
+    {
+      "category": "Design Delivery",
+      "count": "1"
+    },
+    {
+      "category": "Datacenter Products",
+      "count": "1"
+    },
+    {
+      "category": "Digital Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Business & Technology Strategy Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Public Safety Software",
+      "count": "1"
+    },
+    {
+      "category": "AI Governance",
+      "count": "1"
+    },
+    {
+      "category": "Project Management and Portfolio Management",
+      "count": "1"
+    },
+    {
+      "category": "DevOps Automation",
+      "count": "1"
+    },
+    {
+      "category": "Cyber Security & Cloud Services",
+      "count": "1"
+    },
+    {
+      "category": "AI Cloud Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Data Loss Prevention & Data Breach Protection",
+      "count": "1"
+    },
+    {
+      "category": "Chaos Engineering & Reliability Testing",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Migration, Consulting & Adoption",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity & IT Teams",
+      "count": "1"
+    },
+    {
+      "category": "3D Modeling & Animation",
+      "count": "1"
+    },
+    {
+      "category": "Healthcare IT Consulting",
+      "count": "1"
+    },
+    {
+      "category": "IoT & Multimedia",
+      "count": "1"
+    },
+    {
+      "category": "Data Integration & Quality",
+      "count": "1"
+    },
+    {
+      "category": "Cloud & Network Services",
+      "count": "1"
+    },
+    {
+      "category": "Developer Programs",
+      "count": "1"
+    },
+    {
+      "category": "Crash Reporting & Error Monitoring",
+      "count": "1"
+    },
+    {
+      "category": "MLOps & AI Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Migration",
+      "count": "1"
+    },
+    {
+      "category": "Build Systems",
+      "count": "1"
+    },
+    {
+      "category": "Call Security & Trust",
+      "count": "1"
+    },
+    {
+      "category": "Email & Collaboration",
+      "count": "1"
+    },
+    {
+      "category": "Connected Security & Digital Identity Management",
+      "count": "1"
+    },
+    {
+      "category": "Quality Assurance",
+      "count": "1"
+    },
+    {
+      "category": "Fraud Prevention & AML Compliance",
+      "count": "1"
+    },
+    {
+      "category": "Startup Commercialization",
+      "count": "1"
+    },
+    {
+      "category": "Document Automation",
+      "count": "1"
+    },
+    {
+      "category": "Integration Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Digital Transformation & IT Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Application Modernization",
+      "count": "1"
+    },
+    {
+      "category": "Construction Technology",
+      "count": "1"
+    },
+    {
+      "category": "Safety Operations & Risk Management",
+      "count": "1"
+    },
+    {
+      "category": "Billing & Revenue Management",
+      "count": "1"
+    },
+    {
+      "category": "Weather Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "Financial IT Solutions",
+      "count": "1"
+    },
+    {
+      "category": "AI Security & Governance",
+      "count": "1"
+    },
+    {
+      "category": "Mobility Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Apps, Microservices, CI/CD",
+      "count": "1"
+    },
+    {
+      "category": "AR & HMI Development",
+      "count": "1"
+    },
+    {
+      "category": "Network Infrastructure Management",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Security & Compliance",
+      "count": "1"
+    },
+    {
+      "category": "Security & Compliance",
+      "count": "1"
+    },
+    {
+      "category": "AI Code Governance",
+      "count": "1"
+    },
+    {
+      "category": "Email Marketing",
+      "count": "1"
+    },
+    {
+      "category": "Consulting & Implementation",
+      "count": "1"
+    },
+    {
+      "category": "Pricing & Underwriting",
+      "count": "1"
+    },
+    {
+      "category": "Platform as a Service",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity & Compliance",
+      "count": "1"
+    },
+    {
+      "category": "Compliance & Governance",
+      "count": "1"
+    },
+    {
+      "category": "Recruitment & Talent Acquisition",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Security & Compute",
+      "count": "1"
+    },
+    {
+      "category": "Ecommerce Solutions",
+      "count": "1"
+    },
+    {
+      "category": "IT Staffing & Outsourcing",
+      "count": "1"
+    },
+    {
+      "category": "Automated Retail Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Cyber Security Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Direct Mail Automation",
+      "count": "1"
+    },
+    {
+      "category": "Digital Transformation Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Remote IT Support",
+      "count": "1"
+    },
+    {
+      "category": "Developer Experience",
+      "count": "1"
+    },
+    {
+      "category": "Automotive Software & Connectivity",
+      "count": "1"
+    },
+    {
+      "category": "Manufacturing Software",
+      "count": "1"
+    },
+    {
+      "category": "Managed Detection & Response",
+      "count": "1"
+    },
+    {
+      "category": "システムインテグレーション",
+      "count": "1"
+    },
+    {
+      "category": "AI Security",
+      "count": "1"
+    },
+    {
+      "category": "Governance, Risk & Compliance (GRC)",
+      "count": "1"
+    },
+    {
+      "category": "Identity Verification & Fraud Prevention",
+      "count": "1"
+    },
+    {
+      "category": "Healthcare Integration",
+      "count": "1"
+    },
+    {
+      "category": "Network Detection and Response",
+      "count": "1"
+    },
+    {
+      "category": "Network Assurance",
+      "count": "1"
+    },
+    {
+      "category": "Managed Hosting & Beyond",
+      "count": "1"
+    },
+    {
+      "category": "Collaboration & Diagramming Tools",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Cost Management",
+      "count": "1"
+    },
+    {
+      "category": "Simulation Automation",
+      "count": "1"
+    },
+    {
+      "category": "Data Center Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Engineering & Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Privacy Compliance Automation",
+      "count": "1"
+    },
+    {
+      "category": "Laboratory Automation",
+      "count": "1"
+    },
+    {
+      "category": "Font Management & Typography",
+      "count": "1"
+    },
+    {
+      "category": "Video Encoding & AI Services",
+      "count": "1"
+    },
+    {
+      "category": "Managed Cloud & Data Services",
+      "count": "1"
+    },
+    {
+      "category": "Embedded Design & Manufacturing",
+      "count": "1"
+    },
+    {
+      "category": "IT & Retail",
+      "count": "1"
+    },
+    {
+      "category": "Design Tools",
+      "count": "1"
+    },
+    {
+      "category": "Network Optimization & Engineering",
+      "count": "1"
+    },
+    {
+      "category": "Defense & Security Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Identity Governance and Administration",
+      "count": "1"
+    },
+    {
+      "category": "Geospatial & Mapping",
+      "count": "1"
+    },
+    {
+      "category": "Engineering Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Marketplace Automation",
+      "count": "1"
+    },
+    {
+      "category": "Managed Security Services",
+      "count": "1"
+    },
+    {
+      "category": "Community Platforms",
+      "count": "1"
+    },
+    {
+      "category": "Crypto Wallets",
+      "count": "1"
+    },
+    {
+      "category": "Technical Due Diligence",
+      "count": "1"
+    },
+    {
+      "category": "IT Management Software",
+      "count": "1"
+    },
+    {
+      "category": "Engineering Services",
+      "count": "1"
+    },
+    {
+      "category": "Analytics & Data Activation",
+      "count": "1"
+    },
+    {
+      "category": "Geospatial Intelligence & Engineering Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Network & Infrastructure Management",
+      "count": "1"
+    },
+    {
+      "category": "Telecom Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Network & Security",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity & Threat Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "Corporate Innovation & Digital Transformation",
+      "count": "1"
+    },
+    {
+      "category": "DeFi Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Infrastructure Management & Operations",
+      "count": "1"
+    },
+    {
+      "category": "Automation & RPA",
+      "count": "1"
+    },
+    {
+      "category": "Data Center Solutions",
+      "count": "1"
+    },
+    {
+      "category": "AI Consulting & Engineering",
+      "count": "1"
+    },
+    {
+      "category": "Endpoint Security & Compliance",
+      "count": "1"
+    },
+    {
+      "category": "DevOps Tools",
+      "count": "1"
+    },
+    {
+      "category": "Ecommerce Strategy & Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity & Network Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Tokenization & Digital Identity",
+      "count": "1"
+    },
+    {
+      "category": "Consulting & Transformation Services",
+      "count": "1"
+    },
+    {
+      "category": "Document Management",
+      "count": "1"
+    },
+    {
+      "category": "Backup Data Protection",
+      "count": "1"
+    },
+    {
+      "category": "Content Operations",
+      "count": "1"
+    },
+    {
+      "category": "EDA Tools & Semiconductor Design",
+      "count": "1"
+    },
+    {
+      "category": "Quantum Development Platform",
+      "count": "1"
+    },
+    {
+      "category": "Unified Communications & Voice",
+      "count": "1"
+    },
+    {
+      "category": "Wealth Management Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Security & Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Blockchain Engineering",
+      "count": "1"
+    },
+    {
+      "category": "Banking Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "IT Support Services",
+      "count": "1"
+    },
+    {
+      "category": "IT Operations Management",
+      "count": "1"
+    },
+    {
+      "category": "Debugging & Observability",
+      "count": "1"
+    },
+    {
+      "category": "Search & Discovery",
+      "count": "1"
+    },
+    {
+      "category": "Financial Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Browser",
+      "count": "1"
+    },
+    {
+      "category": "Mapping & Navigation",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Security Posture Management",
+      "count": "1"
+    },
+    {
+      "category": "Data Integrity & Management",
+      "count": "1"
+    },
+    {
+      "category": "API Management & Event Streaming",
+      "count": "1"
+    },
+    {
+      "category": "AR & VR Development",
+      "count": "1"
+    },
+    {
+      "category": "Commerce Platform",
+      "count": "1"
+    },
+    {
+      "category": "Software Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Quantum Products",
+      "count": "1"
+    },
+    {
+      "category": "Construction Financials",
+      "count": "1"
+    },
+    {
+      "category": "Building Management Systems",
+      "count": "1"
+    },
+    {
+      "category": "Data Extraction & OCR",
+      "count": "1"
+    },
+    {
+      "category": "AI Application Engineering",
+      "count": "1"
+    },
+    {
+      "category": "IT Distribution & Services",
+      "count": "1"
+    },
+    {
+      "category": "AI Solution Delivery",
+      "count": "1"
+    },
+    {
+      "category": "Infrastructure Managed Services",
+      "count": "1"
+    },
+    {
+      "category": "Shipping Management",
+      "count": "1"
+    },
+    {
+      "category": "Unified Communication & Collaboration",
+      "count": "1"
+    },
+    {
+      "category": "Video Marketing & Automation",
+      "count": "1"
+    },
+    {
+      "category": "OSINT & Social Media Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "Natural Language Processing",
+      "count": "1"
+    },
+    {
+      "category": "Software Engineering",
+      "count": "1"
+    },
+    {
+      "category": "IoT Services",
+      "count": "1"
+    },
+    {
+      "category": "Diagramming & Visualization",
+      "count": "1"
+    },
+    {
+      "category": "AI Security & Compliance",
+      "count": "1"
+    },
+    {
+      "category": "Search & Analytics",
+      "count": "1"
+    },
+    {
+      "category": "Healthcare Platform",
+      "count": "1"
+    },
+    {
+      "category": "Code Understanding & Oversight",
+      "count": "1"
+    },
+    {
+      "category": "CX Advisory Services",
+      "count": "1"
+    },
+    {
+      "category": "Network Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "Endpoint Security",
+      "count": "1"
+    },
+    {
+      "category": "Publishing Platforms",
+      "count": "1"
+    },
+    {
+      "category": "Predictive Battery Analytics",
+      "count": "1"
+    },
+    {
+      "category": "Technology Training & Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Package Management",
+      "count": "1"
+    },
+    {
+      "category": "Incident Response & Cybersecurity",
+      "count": "1"
+    },
+    {
+      "category": "Testing & Troubleshooting",
+      "count": "1"
+    },
+    {
+      "category": "Messaging & Notification Services",
+      "count": "1"
+    },
+    {
+      "category": "DevOps Experience",
+      "count": "1"
+    },
+    {
+      "category": "Logistics & Delivery Management",
+      "count": "1"
+    },
+    {
+      "category": "Industrial Edge Computing",
+      "count": "1"
+    },
+    {
+      "category": "ERP & Enterprise Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Business Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "Media Management & Workflow Automation",
+      "count": "1"
+    },
+    {
+      "category": "Collaboration & Productivity",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Cryptographic Posture Management",
+      "count": "1"
+    },
+    {
+      "category": "Blockchain-as-a-Service",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity Assurance Management",
+      "count": "1"
+    },
+    {
+      "category": "Mission Services",
+      "count": "1"
+    },
+    {
+      "category": "IT Infrastructure & Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Simulation Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Architecture & Digital Transformation",
+      "count": "1"
+    },
+    {
+      "category": "Chaos Engineering & Reliability",
+      "count": "1"
+    },
+    {
+      "category": "IoT Technologies",
+      "count": "1"
+    },
+    {
+      "category": "Enterprise Collaboration",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Migration & Modernization",
+      "count": "1"
+    },
+    {
+      "category": "Integration & Automation",
+      "count": "1"
+    },
+    {
+      "category": "Data Resilience",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity & Operational Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "Data & AI Engineering",
+      "count": "1"
+    },
+    {
+      "category": "URL Shortener",
+      "count": "1"
+    },
+    {
+      "category": "Data Centre Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Blockchain Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Logistics & Supply Chain Management",
+      "count": "1"
+    },
+    {
+      "category": "Accessibility Compliance",
+      "count": "1"
+    },
+    {
+      "category": "EDA Software",
+      "count": "1"
+    },
+    {
+      "category": "Business Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Mobile App Security",
+      "count": "1"
+    },
+    {
+      "category": "Billing & Usage Metering",
+      "count": "1"
+    },
+    {
+      "category": "Identity Management",
+      "count": "1"
+    },
+    {
+      "category": "Adaptive Engineering & AI Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Accounting Software",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity & Operational Technology",
+      "count": "1"
+    },
+    {
+      "category": "Version Control & Collaboration",
+      "count": "1"
+    },
+    {
+      "category": "IT Helpdesk & NOC",
+      "count": "1"
+    },
+    {
+      "category": "PHP Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Bug Reporting & Feedback",
+      "count": "1"
+    },
+    {
+      "category": "Workflow Automation & Orchestration",
+      "count": "1"
+    },
+    {
+      "category": "Application Security Posture Management",
+      "count": "1"
+    },
+    {
+      "category": "AI Governance & Control",
+      "count": "1"
+    },
+    {
+      "category": "Maintenance Management Software",
+      "count": "1"
+    },
+    {
+      "category": "Intelligent Automation Consultancy",
+      "count": "1"
+    },
+    {
+      "category": "Project Management Software",
+      "count": "1"
+    },
+    {
+      "category": "IT Outsourcing Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Robotics Software",
+      "count": "1"
+    },
+    {
+      "category": "Colocation Services",
+      "count": "1"
+    },
+    {
+      "category": "IT & Test Environment Management",
+      "count": "1"
+    },
+    {
+      "category": "Automation & Integration",
+      "count": "1"
+    },
+    {
+      "category": "Data Integration & Management",
+      "count": "1"
+    },
+    {
+      "category": "Project Management & Collaboration",
+      "count": "1"
+    },
+    {
+      "category": "Privacy Technology",
+      "count": "1"
+    },
+    {
+      "category": "Virtual Training & Labs",
+      "count": "1"
+    },
+    {
+      "category": "Hospitality Technology Solutions",
+      "count": "1"
+    },
+    {
+      "category": "AI Native Adoption",
+      "count": "1"
+    },
+    {
+      "category": "Project Management & Delivery",
+      "count": "1"
+    },
+    {
+      "category": "Remote Access & Support",
+      "count": "1"
+    },
+    {
+      "category": "Health IT Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Software Toolchain Integration",
+      "count": "1"
+    },
+    {
+      "category": "Digital Engineering & Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Security Orchestration",
+      "count": "1"
+    },
+    {
+      "category": "Enterprise Architecture",
+      "count": "1"
+    },
+    {
+      "category": "Emergency Management Software",
+      "count": "1"
+    },
+    {
+      "category": "Monitoring & Analytics",
+      "count": "1"
+    },
+    {
+      "category": "Embedded Analytics",
+      "count": "1"
+    },
+    {
+      "category": "KYC & Compliance Automation",
+      "count": "1"
+    },
+    {
+      "category": "Voice AI & Conversational Interfaces",
+      "count": "1"
+    },
+    {
+      "category": "Vessel Intelligence & Automation",
+      "count": "1"
+    },
+    {
+      "category": "Staffing & Recruitment",
+      "count": "1"
+    },
+    {
+      "category": "Construction Management",
+      "count": "1"
+    },
+    {
+      "category": "Income Verification",
+      "count": "1"
+    },
+    {
+      "category": "Security Systems",
+      "count": "1"
+    },
+    {
+      "category": "Video Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "IoT Data Management",
+      "count": "1"
+    },
+    {
+      "category": "Chat Messaging",
+      "count": "1"
+    },
+    {
+      "category": "Data Consulting",
+      "count": "1"
+    },
+    {
+      "category": "DevEx & Engineering Management",
+      "count": "1"
+    },
+    {
+      "category": "Embedded Operating Systems",
+      "count": "1"
+    },
+    {
+      "category": "Virtualization & VDI Solutions",
+      "count": "1"
+    },
+    {
+      "category": "IoT Stream Governance",
+      "count": "1"
+    },
+    {
+      "category": "Systems Development & Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Network Security & Performance",
+      "count": "1"
+    },
+    {
+      "category": "Cyber Intelligence & Security",
+      "count": "1"
+    },
+    {
+      "category": "Machine Monitoring",
+      "count": "1"
+    },
+    {
+      "category": "Medical Device Certification",
+      "count": "1"
+    },
+    {
+      "category": "IT Security Consulting",
+      "count": "1"
+    },
+    {
+      "category": "ATM Monitoring & Management",
+      "count": "1"
+    },
+    {
+      "category": "Asset Management",
+      "count": "1"
+    },
+    {
+      "category": "Cyber Defense",
+      "count": "1"
+    },
+    {
+      "category": "Accounts Payable Automation",
+      "count": "1"
+    },
+    {
+      "category": "Commerce & Order Management",
+      "count": "1"
+    },
+    {
+      "category": "Healthcare IT",
+      "count": "1"
+    },
+    {
+      "category": "Venture Capital",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Services & Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Offshore Development",
+      "count": "1"
+    },
+    {
+      "category": "Order Management",
+      "count": "1"
+    },
+    {
+      "category": "Fleet Management",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Security & Runtime Protection",
+      "count": "1"
+    },
+    {
+      "category": "Application Security & Load Balancing",
+      "count": "1"
+    },
+    {
+      "category": "IoT & Data Streaming",
+      "count": "1"
+    },
+    {
+      "category": "IT Support & Cyber Security",
+      "count": "1"
+    },
+    {
+      "category": "Industrial Automation",
+      "count": "1"
+    },
+    {
+      "category": "Backup and Disaster Recovery",
+      "count": "1"
+    },
+    {
+      "category": "Blockchain",
+      "count": "1"
+    },
+    {
+      "category": "Enterprise Consulting & Digital Strategy",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Development",
+      "count": "1"
+    },
+    {
+      "category": "Networking & Connectivity",
+      "count": "1"
+    },
+    {
+      "category": "Speech-to-Text & Transcription",
+      "count": "1"
+    },
+    {
+      "category": "Automotive Software Development",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Communication APIs and Messaging",
+      "count": "1"
+    },
+    {
+      "category": "Product Design & Development",
+      "count": "1"
+    },
+    {
+      "category": "Audio Production Software",
+      "count": "1"
+    },
+    {
+      "category": "Device Management & Monitoring",
+      "count": "1"
+    },
+    {
+      "category": "Augmented Reality SDK",
+      "count": "1"
+    },
+    {
+      "category": "AI & Data Engineering",
+      "count": "1"
+    },
+    {
+      "category": "Automation & Orchestration",
+      "count": "1"
+    },
+    {
+      "category": "Data Acquisition and Analytics",
+      "count": "1"
+    },
+    {
+      "category": "Third-Party Risk Management",
+      "count": "1"
+    },
+    {
+      "category": "Talent Acquisition & Workforce Solutions",
+      "count": "1"
+    },
+    {
+      "category": "CAD Software",
+      "count": "1"
+    },
+    {
+      "category": "Manufacturing Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "Software Supply Chain Security",
+      "count": "1"
+    },
+    {
+      "category": "Vertical SaaS Partner",
+      "count": "1"
+    },
+    {
+      "category": "Compliance Management",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Management Platform",
+      "count": "1"
+    },
+    {
+      "category": "Application Lifecycle Management",
+      "count": "1"
+    },
+    {
+      "category": "Fraud Detection & Prevention",
+      "count": "1"
+    },
+    {
+      "category": "Talent Sourcing",
+      "count": "1"
+    },
+    {
+      "category": "Data Science Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Network Management & Automation",
+      "count": "1"
+    },
+    {
+      "category": "EV Charging Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Building Analytics",
+      "count": "1"
+    },
+    {
+      "category": "Contract Lifecycle Management",
+      "count": "1"
+    },
+    {
+      "category": "Weather API & Data Services",
+      "count": "1"
+    },
+    {
+      "category": "Project Controls & Cost Management",
+      "count": "1"
+    },
+    {
+      "category": "Maritime Trade Management",
+      "count": "1"
+    },
+    {
+      "category": "Identity Governance & Administration",
+      "count": "1"
+    },
+    {
+      "category": "Enterprise ICT Services",
+      "count": "1"
+    },
+    {
+      "category": "Data Security & Management",
+      "count": "1"
+    },
+    {
+      "category": "Real-Time Communication",
+      "count": "1"
+    },
+    {
+      "category": "Software Development Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Digital Supply Chain",
+      "count": "1"
+    },
+    {
+      "category": "Additive Manufacturing Software",
+      "count": "1"
+    },
+    {
+      "category": "Financial Automation",
+      "count": "1"
+    },
+    {
+      "category": "IT & Agile Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Salesforce Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Market Data Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Notifications Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Environmental Commodities Trading",
+      "count": "1"
+    },
+    {
+      "category": "Communications Platform",
+      "count": "1"
+    },
+    {
+      "category": "Operational Awareness & Response",
+      "count": "1"
+    },
+    {
+      "category": "Digital Manufacturing Software",
+      "count": "1"
+    },
+    {
+      "category": "Blockchain Compliance",
+      "count": "1"
+    },
+    {
+      "category": "Architecture & Design Tools",
+      "count": "1"
+    },
+    {
+      "category": "Software Composition Analysis",
+      "count": "1"
+    },
+    {
+      "category": "Web Hosting",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity & Operational Resilience",
+      "count": "1"
+    },
+    {
+      "category": "Industry 4.0 Transformation",
+      "count": "1"
+    },
+    {
+      "category": "Software Production Governance",
+      "count": "1"
+    },
+    {
+      "category": "Mapping & Geospatial Software",
+      "count": "1"
+    },
+    {
+      "category": "Enterprise Software Support",
+      "count": "1"
+    }
+  ],
+  "funnel30": [
+    {
+      "category": "Cloud Infrastructure & Compute",
+      "count": "43"
+    },
+    {
+      "category": "AI/ML Infrastructure & MLOps",
+      "count": "33"
+    },
+    {
+      "category": "Application Security (SAST/DAST/SCA)",
+      "count": "25"
+    },
+    {
+      "category": "Cloud Consulting",
+      "count": "18"
+    },
+    {
+      "category": "Data Infrastructure & Pipelines",
+      "count": "17"
+    },
+    {
+      "category": "Cloud & Runtime Security",
+      "count": "15"
+    },
+    {
+      "category": "Payments & FinTech Infrastructure",
+      "count": "13"
+    },
+    {
+      "category": "AI Developer Tools & LLM Infra",
+      "count": "9"
+    },
+    {
+      "category": "API Platform & Gateway",
+      "count": "8"
+    },
+    {
+      "category": "Workflow Automation & iPaaS",
+      "count": "7"
+    },
+    {
+      "category": "Identity & Access Management",
+      "count": "7"
+    },
+    {
+      "category": "Application Security",
+      "count": "6"
+    },
+    {
+      "category": "Blockchain Infrastructure",
+      "count": "6"
+    },
+    {
+      "category": "Testing & QA Automation",
+      "count": "6"
+    },
+    {
+      "category": "Infrastructure as Code",
+      "count": "6"
+    },
+    {
+      "category": "Mobile Development",
+      "count": "3"
+    },
+    {
+      "category": "Low-Code & Internal Tooling",
+      "count": "3"
+    },
+    {
+      "category": "Observability & APM",
+      "count": "3"
+    },
+    {
+      "category": "Network Security",
+      "count": "3"
+    },
+    {
+      "category": "IT Consulting",
+      "count": "3"
+    },
+    {
+      "category": "Networking & Service Mesh",
+      "count": "3"
+    },
+    {
+      "category": "CI/CD & Build Systems",
+      "count": "3"
+    },
+    {
+      "category": "Email Security",
+      "count": "2"
+    },
+    {
+      "category": "Data Security & Governance",
+      "count": "2"
+    },
+    {
+      "category": "Identity Security",
+      "count": "2"
+    },
+    {
+      "category": "Custom Software Development",
+      "count": "2"
+    },
+    {
+      "category": "Crypto Wallets",
+      "count": "1"
+    },
+    {
+      "category": "Cyber Operations",
+      "count": "1"
+    },
+    {
+      "category": "Cyber Security",
+      "count": "1"
+    },
+    {
+      "category": "Cyber Security & Cloud Services",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity Assurance Management",
+      "count": "1"
+    },
+    {
+      "category": "Cybersecurity Management",
+      "count": "1"
+    },
+    {
+      "category": "Data Security",
+      "count": "1"
+    },
+    {
+      "category": "Developer Communications Infra",
+      "count": "1"
+    },
+    {
+      "category": "Developer Productivity",
+      "count": "1"
+    },
+    {
+      "category": "Device Management & IoT",
+      "count": "1"
+    },
+    {
+      "category": "DevOps Experience",
+      "count": "1"
+    },
+    {
+      "category": "Digital Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Digital Engineering & MBSE",
+      "count": "1"
+    },
+    {
+      "category": "Digital Technology & Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Document Management",
+      "count": "1"
+    },
+    {
+      "category": "Email Marketing",
+      "count": "1"
+    },
+    {
+      "category": "Energy Management Software",
+      "count": "1"
+    },
+    {
+      "category": "EV Charging Solutions",
+      "count": "1"
+    },
+    {
+      "category": "File Transfer & Management",
+      "count": "1"
+    },
+    {
+      "category": "Financial Automation",
+      "count": "1"
+    },
+    {
+      "category": "FinOps & Cloud Cost Management",
+      "count": "1"
+    },
+    {
+      "category": "Game Development",
+      "count": "1"
+    },
+    {
+      "category": "Healthcare Platform",
+      "count": "1"
+    },
+    {
+      "category": "Identity Governance and Administration",
+      "count": "1"
+    },
+    {
+      "category": "Identity Verification",
+      "count": "1"
+    },
+    {
+      "category": "Identity Verification & Compliance",
+      "count": "1"
+    },
+    {
+      "category": "Identity Verification & Digital Signatures",
+      "count": "1"
+    },
+    {
+      "category": "Incident Management & On-Call",
+      "count": "1"
+    },
+    {
+      "category": "Incident Response & Cybersecurity",
+      "count": "1"
+    },
+    {
+      "category": "Industrial Automation",
+      "count": "1"
+    },
+    {
+      "category": "Industrial IoT & Smart Manufacturing",
+      "count": "1"
+    },
+    {
+      "category": "Infrastructure Monitoring",
+      "count": "1"
+    },
+    {
+      "category": "Integration Platform as a Service (iPaaS)",
+      "count": "1"
+    },
+    {
+      "category": "Intelligent Automation Consultancy",
+      "count": "1"
+    },
+    {
+      "category": "IoT & Data Streaming",
+      "count": "1"
+    },
+    {
+      "category": "IoT Connectivity",
+      "count": "1"
+    },
+    {
+      "category": "IoT Connectivity Management",
+      "count": "1"
+    },
+    {
+      "category": "Access Control",
+      "count": "1"
+    },
+    {
+      "category": "IT Operations Management",
+      "count": "1"
+    },
+    {
+      "category": "IT Security Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Loan Management Software",
+      "count": "1"
+    },
+    {
+      "category": "Logistics & Delivery Management",
+      "count": "1"
+    },
+    {
+      "category": "Logistics & Supply Chain Management",
+      "count": "1"
+    },
+    {
+      "category": "Machine Monitoring",
+      "count": "1"
+    },
+    {
+      "category": "Managed IT Services",
+      "count": "1"
+    },
+    {
+      "category": "Managed Mobility Services",
+      "count": "1"
+    },
+    {
+      "category": "Managed Security Services",
+      "count": "1"
+    },
+    {
+      "category": "Manufacturing Execution Systems",
+      "count": "1"
+    },
+    {
+      "category": "Manufacturing Intelligence",
+      "count": "1"
+    },
+    {
+      "category": "Maritime Trade Management",
+      "count": "1"
+    },
+    {
+      "category": "Market Data Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Medical Device Certification",
+      "count": "1"
+    },
+    {
+      "category": "Network & Endpoint Security",
+      "count": "1"
+    },
+    {
+      "category": "Network Infrastructure Management",
+      "count": "1"
+    },
+    {
+      "category": "Network Security & Performance",
+      "count": "1"
+    },
+    {
+      "category": "Networking & Security",
+      "count": "1"
+    },
+    {
+      "category": "PCB Design & Engineering",
+      "count": "1"
+    },
+    {
+      "category": "Privacy Compliance Automation",
+      "count": "1"
+    },
+    {
+      "category": "Project Controls & Cost Management",
+      "count": "1"
+    },
+    {
+      "category": "Project Management",
+      "count": "1"
+    },
+    {
+      "category": "Quality Assurance & Testing",
+      "count": "1"
+    },
+    {
+      "category": "Retail Technology",
+      "count": "1"
+    },
+    {
+      "category": "Robotics & Automation",
+      "count": "1"
+    },
+    {
+      "category": "Safety Operations & Risk Management",
+      "count": "1"
+    },
+    {
+      "category": "Secrets Management",
+      "count": "1"
+    },
+    {
+      "category": "Security & Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Security Orchestration",
+      "count": "1"
+    },
+    {
+      "category": "Security Response Infrastructure",
+      "count": "1"
+    },
+    {
+      "category": "Security Systems Integration",
+      "count": "1"
+    },
+    {
+      "category": "Shipping Management",
+      "count": "1"
+    },
+    {
+      "category": "Simulation Automation",
+      "count": "1"
+    },
+    {
+      "category": "Simulation Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Software Production Governance",
+      "count": "1"
+    },
+    {
+      "category": "Startup Commercialization",
+      "count": "1"
+    },
+    {
+      "category": "UI Design",
+      "count": "1"
+    },
+    {
+      "category": "Virtual Training & Labs",
+      "count": "1"
+    },
+    {
+      "category": "Virtualization & VDI Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Wealth Management Solutions",
+      "count": "1"
+    },
+    {
+      "category": "IoT Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Accounts Payable Automation",
+      "count": "1"
+    },
+    {
+      "category": "AI Governance",
+      "count": "1"
+    },
+    {
+      "category": "AI Governance & Control",
+      "count": "1"
+    },
+    {
+      "category": "Analytics",
+      "count": "1"
+    },
+    {
+      "category": "Application Dependency Mapping",
+      "count": "1"
+    },
+    {
+      "category": "Application Security Testing",
+      "count": "1"
+    },
+    {
+      "category": "AR & VR Development",
+      "count": "1"
+    },
+    {
+      "category": "Audio Production Software",
+      "count": "1"
+    },
+    {
+      "category": "Backup and Disaster Recovery",
+      "count": "1"
+    },
+    {
+      "category": "Banking & Finance Software",
+      "count": "1"
+    },
+    {
+      "category": "Billing & Revenue Management",
+      "count": "1"
+    },
+    {
+      "category": "Blockchain & Decentralized Platforms",
+      "count": "1"
+    },
+    {
+      "category": "Blockchain Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Business & Technology Strategy Consulting",
+      "count": "1"
+    },
+    {
+      "category": "CAD Software",
+      "count": "1"
+    },
+    {
+      "category": "Call Security & Trust",
+      "count": "1"
+    },
+    {
+      "category": "Chaos Engineering & Reliability",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Management Services",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Services",
+      "count": "1"
+    },
+    {
+      "category": "Cloud Solutions",
+      "count": "1"
+    },
+    {
+      "category": "Commerce & Order Management",
+      "count": "1"
+    },
+    {
+      "category": "Community Platforms",
+      "count": "1"
+    },
+    {
+      "category": "Consulting",
+      "count": "1"
+    },
+    {
+      "category": "Container & Orchestration",
+      "count": "1"
+    },
+    {
+      "category": "Content Management Systems",
+      "count": "1"
+    }
+  ]
+}

@@ -317,7 +317,7 @@ export async function resumeUploadSession(
   };
 
   // Use the server's authoritative chunk count (more reliable than localStorage)
-  const startFromChunk = resumeData.chunksDone + 1;
+  const startFromChunk = resumeData.chunksDone;
 
   return uploadCsvChunked({
     file,
