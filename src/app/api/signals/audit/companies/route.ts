@@ -23,7 +23,11 @@ export async function GET(request: Request) {
         c.category, 
         c.classification_reason,
         c.audit_is_false_positive,
-        c.audit_flag_reason
+        c.audit_flag_reason,
+        c.audit_confidence,
+        c.audit_reasoning,
+        c.audit_dev_signals,
+        c.audit_dev_signal_score
       FROM companies c
       JOIN funnel_companies fc ON c.id = fc.company_id
       WHERE fc.funnel_id = $1 AND c.icp_decision = 'Yes'

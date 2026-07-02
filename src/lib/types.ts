@@ -73,6 +73,14 @@ export interface Company {
   created_at: string;
   updated_at: string;
   classified_at: string | null;
+
+  // Auditor (v2)
+  audit_is_false_positive: boolean | null;
+  audit_confidence: number | null;
+  audit_reasoning: string | null;
+  audit_dev_signals: string | null;
+  audit_dev_signal_score: number | null;
+  audit_flag_reason: string | null;
 }
 
 /**

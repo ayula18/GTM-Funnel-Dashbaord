@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Shield, Play, AlertTriangle, CheckCircle2, Trash2, 
   Loader2, Search, ChevronLeft, ChevronRight 
@@ -28,12 +28,20 @@ interface Company {
   classification_reason: string;
   audit_is_false_positive?: boolean;
   audit_flag_reason?: string;
+  audit_confidence?: number;
+  audit_reasoning?: string;
+  audit_dev_signals?: string;
+  audit_dev_signal_score?: number;
 }
 
 interface AuditResult {
   id: number;
   is_false_positive: boolean;
   flag_reason: string;
+  confidence?: number;
+  reasoning?: string;
+  dev_signals?: string;
+  dev_signal_score?: number;
 }
 
 export default function ICPAuditorPage() {
@@ -50,6 +58,7 @@ export default function ICPAuditorPage() {
   const [selectedToReject, setSelectedToReject] = useState<Set<number>>(new Set());
   const [isRejecting, setIsRejecting] = useState(false);
   const [pendingAutoRun, setPendingAutoRun] = useState(false);
+  const stopAuditRef = useRef(false);
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,6 +99,10 @@ export default function ICPAuditorPage() {
                 id: c.id,
                 is_false_positive: c.audit_is_false_positive,
                 flag_reason: c.audit_flag_reason || '',
+                confidence: c.audit_confidence,
+                reasoning: c.audit_reasoning,
+                dev_signals: c.audit_dev_signals,
+                dev_signal_score: c.audit_dev_signal_score,
               };
             }
           });
@@ -168,7 +181,13 @@ export default function ICPAuditorPage() {
     setAuditProgress({ current: 0, total: toAudit.length });
 
     try {
+      stopAuditRef.current = false;
       for (let i = 0; i < toAudit.length; i += CHUNK_SIZE) {
+        if (stopAuditRef.current) {
+          console.log('Audit stopped by user');
+          break;
+        }
+
         const chunk = toAudit.slice(i, i + CHUNK_SIZE);
         
         const res = await fetch('/api/signals/audit/run', {
@@ -281,23 +300,25 @@ export default function ICPAuditorPage() {
             </SelectContent>
           </Select>
           
-          <Button
-            onClick={runAuditor}
-            disabled={!selectedFunnel || unscannedInView === 0 || isAuditing}
-            className="gap-2"
-          >
-            {isAuditing ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Auditing ({auditProgress.current}/{auditProgress.total})
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                Run AI on Filtered View ({unscannedInView})
-              </>
-            )}
-          </Button>
+          {isAuditing ? (
+            <Button
+              onClick={() => { stopAuditRef.current = true; }}
+              variant="destructive"
+              className="gap-2"
+            >
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Stop Auditing ({auditProgress.current}/{auditProgress.total})
+            </Button>
+          ) : (
+            <Button
+              onClick={runAuditor}
+              disabled={!selectedFunnel || unscannedInView === 0}
+              className="gap-2"
+            >
+              <Play className="w-4 h-4" />
+              Run AI on Filtered View ({unscannedInView})
+            </Button>
+          )}
         </div>
       </div>
 
@@ -481,8 +502,9 @@ export default function ICPAuditorPage() {
                           className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                         />
                       </th>
-                      <th className="px-6 py-4 font-medium text-muted-foreground w-64">Company</th>
-                      <th className="px-6 py-4 font-medium text-muted-foreground w-48">Category</th>
+                      <th className="px-6 py-4 font-medium text-muted-foreground w-56">Company</th>
+                      <th className="px-6 py-4 font-medium text-muted-foreground w-40">Category</th>
+                      <th className="px-6 py-4 font-medium text-muted-foreground w-16">Dev Signals</th>
                       <th className="px-6 py-4 font-medium text-muted-foreground">Classification Reason</th>
                       <th className="px-6 py-4 font-medium text-muted-foreground w-64">Audit Status</th>
                     </tr>
@@ -520,9 +542,30 @@ export default function ICPAuditorPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4">
+                            {result ? (
+                              <div className="flex items-center gap-1">
+                                <span className={cn(
+                                  "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold",
+                                  (result.dev_signal_score || 0) >= 3 ? "bg-emerald-500/15 text-emerald-500" :
+                                  (result.dev_signal_score || 0) > 0 ? "bg-amber-500/15 text-amber-500" :
+                                  "bg-muted text-muted-foreground"
+                                )}>
+                                  {result.dev_signal_score || 0}/10
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">—</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
                             <p className="text-xs text-muted-foreground line-clamp-2 group-hover:line-clamp-none transition-all">
                               {company.classification_reason}
                             </p>
+                            {result?.dev_signals && (
+                              <p className="text-[10px] text-emerald-500/80 mt-1 line-clamp-1 group-hover:line-clamp-none">
+                                🛡️ {result.dev_signals}
+                              </p>
+                            )}
                           </td>
                           <td className="px-6 py-4">
                             {!result ? (
@@ -532,13 +575,22 @@ export default function ICPAuditorPage() {
                                 <div className="flex items-center gap-1.5 text-destructive font-medium text-xs">
                                   <AlertTriangle className="w-3.5 h-3.5" />
                                   False Positive
+                                  <span className="text-[10px] font-normal opacity-70">({result.confidence}/10)</span>
                                 </div>
                                 <p className="text-[11px] text-destructive/80">{result.flag_reason}</p>
+                                {result.reasoning && (
+                                  <p className="text-[10px] text-muted-foreground line-clamp-2 group-hover:line-clamp-none">{result.reasoning}</p>
+                                )}
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1.5 text-emerald-500 font-medium text-xs">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                Verified ICP
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 text-emerald-500 font-medium text-xs">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  Verified ICP
+                                </div>
+                                {result.reasoning && (
+                                  <p className="text-[10px] text-muted-foreground line-clamp-1 group-hover:line-clamp-none">{result.reasoning}</p>
+                                )}
                               </div>
                             )}
                           </td>
@@ -547,7 +599,7 @@ export default function ICPAuditorPage() {
                     })}
                     {filteredCompanies.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
                           No companies found matching the current filters.
                         </td>
                       </tr>

@@ -32,6 +32,13 @@ const LABELS: Record<string, string> = {
   sales_team_count: 'Sales Team', manual_gtm_bucket: 'Manual Bucket', 
   manual_gtm_reason: 'Manual Reason', funnel_names: 'Funnel Sources',
   gtm_bucket: 'GTM Bucket (Computed)',
+  audit_is_false_positive: 'AI Auditor Flag',
+  audit_confidence: 'Auditor Confidence',
+  audit_reasoning: 'Auditor Reasoning',
+  audit_dev_signals: 'Dev Signals Found',
+  audit_dev_signal_score: 'Dev Signal Score',
+  audit_flag_reason: 'Flag Reason',
+  icp_audit_result: 'ICP Audit',
 };
 const label = (k: string) => LABELS[k] || k;
 
@@ -72,6 +79,7 @@ const FINAL_OUTPUT_COLUMNS: Array<[string, string]> = [
   ['icp_fit_level', 'ICP Fit Level'],
   ['is_nonprofit', 'Non profit ?'],
   ['final_bucket', 'Final bucket'],
+  ['icp_audit_result', 'ICP Audit'],
 ];
 
 function cellValue(row: Row, key: string): string | number | null {
@@ -101,6 +109,11 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
     c.final_bucket = BUCKET_META[bucketId]?.label ?? '';
     c.is_services = String(c.company_classification ?? '').trim() === 'IT Services & Solutions' ? 'Yes' : '';
     c.source = funnelName; // this export is scoped to one funnel → that funnel is the source
+    
+    // AI Auditor derived column
+    if (c.audit_is_false_positive === true) c.icp_audit_result = 'Flagged / No';
+    else if (c.audit_is_false_positive === false) c.icp_audit_result = 'Verified / Yes';
+    else c.icp_audit_result = 'Unaudited';
   });
 
   const steps = await getFunnelSteps(funnelId) as unknown as FunnelSteps;
@@ -142,10 +155,17 @@ export async function buildFunnelWorkbook(funnelId: number): Promise<FunnelWorkb
   addSheet('ICP Results', [
     'domain', 'company_name', 'icp_decision', 'manual_icp', 'company_classification',
     'category', 'sub_category', 'company_type', 'icp_fit_level', 'confidence',
-    'needs_manual_review', 'classification_reason', 'observations',
+    'needs_manual_review', 'classification_reason', 'observations', 'icp_audit_result'
   ], icpRows);
 
-  // 3) Enrichment by source — each source's own columns, only rows that have data.
+  // 3) AI Auditor — detail sheet
+  const auditedRows = companies.filter(c => c.audit_is_false_positive !== null);
+  addSheet('AI Auditor', [
+    'domain', 'company_name', 'icp_audit_result', 'audit_dev_signal_score', 'audit_dev_signals', 
+    'audit_confidence', 'audit_reasoning', 'audit_flag_reason'
+  ], auditedRows);
+
+  // 4) Enrichment by source — each source's own columns, only rows that have data.
   // Apollo carries every Apollo-origin field we store, so the tab mirrors the
   // original uploaded Apollo sheet rather than a trimmed subset.
   addSheet('Apollo',

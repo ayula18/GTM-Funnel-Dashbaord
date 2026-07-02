@@ -373,6 +373,8 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                 <TableHead><SortHeader col="c.domain">Domain</SortHeader></TableHead>
                 {['main', 'apollo', 'employees', 'icp', 'funding'].includes(viewMode) && <TableHead>Apollo?</TableHead>}
                 {['main', 'icp', 'funding'].includes(viewMode) && <TableHead>ICP</TableHead>}
+                {['main', 'icp'].includes(viewMode) && <TableHead>ICP Audit</TableHead>}
+                {['main', 'icp'].includes(viewMode) && <TableHead className="text-right">Dev Signal Score</TableHead>}
                 {['main', 'icp'].includes(viewMode) && <TableHead>Classification</TableHead>}
                 {['main', 'icp'].includes(viewMode) && <TableHead>Category</TableHead>}
                 {['main', 'icp'].includes(viewMode) && <TableHead>Confidence</TableHead>}
@@ -460,6 +462,26 @@ export function DataTable({ funnelId, filters: externalFilters, viewMode = 'main
                     )}
                     {['main', 'icp', 'funding'].includes(viewMode) && (
                       <TableCell><IcpBadge decision={row.icp_decision} manual={row.manual_icp} /></TableCell>
+                    )}
+                    {['main', 'icp'].includes(viewMode) && (
+                      <TableCell>
+                        {row.audit_is_false_positive === true ? (
+                          <Badge variant="outline" className="text-[10px] text-destructive bg-destructive/10 border-destructive/20 font-medium">Flagged</Badge>
+                        ) : row.audit_is_false_positive === false ? (
+                          <Badge variant="outline" className="text-[10px] text-emerald-600 bg-emerald-500/10 border-emerald-500/20 font-medium">Verified</Badge>
+                        ) : (
+                          <span className="text-muted-foreground/50 text-xs italic">—</span>
+                        )}
+                      </TableCell>
+                    )}
+                    {['main', 'icp'].includes(viewMode) && (
+                      <TableCell className="text-right font-medium">
+                        {row.audit_dev_signal_score !== null && row.audit_dev_signal_score !== undefined ? (
+                          <span className={row.audit_dev_signal_score > 0 ? 'text-emerald-600' : 'text-muted-foreground'}>{row.audit_dev_signal_score}/10</span>
+                        ) : (
+                          <span className="text-muted-foreground/50 text-xs italic">—</span>
+                        )}
+                      </TableCell>
                     )}
                     {['main', 'icp'].includes(viewMode) && (
                       <TableCell>
